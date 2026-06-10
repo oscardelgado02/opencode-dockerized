@@ -47,6 +47,12 @@ source ~/.bashrc  # or source ~/.zshrc
 safe-opencode
 ```
 
+or:
+
+```bash
+docker run --rm -it -e HOME=/home/coder -v "$(pwd):/workspace:rw" safe-opencode
+```
+
 ---
 
 ## Files Explained
