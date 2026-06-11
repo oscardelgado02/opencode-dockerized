@@ -11,11 +11,18 @@ RUN if [ "$PNPM_VERSION" = "latest" ]; then \
       npm install -g pnpm@${PNPM_VERSION}; \
     fi
 
+ENV SHELL=bash
+
+RUN pnpm setup
+
+ENV PATH="/root/.local/share/pnpm/bin:$PATH"
+
 RUN if [ "$OPENCODE_VERSION" = "latest" ]; then \
-      pnpm add -g opencode-ai; \
+      pnpm add -g opencode-ai@latest; \
     else \
       pnpm add -g opencode-ai@${OPENCODE_VERSION}; \
-    fi
+    fi && \
+    find /root/.local/share/pnpm/global -path '*/node_modules/opencode-ai' -exec sh -c 'cd "{}" && node postinstall.mjs' \;
 
 FROM alpine:latest
 
@@ -25,7 +32,7 @@ ARG GID=1000
 RUN apk add --no-cache bash libstdc++ libgcc
 
 COPY --from=installer /usr/local/lib/node_modules /usr/local/lib/node_modules
-COPY --from=installer /usr/local/bin/opencode /usr/local/bin/opencode
+COPY --from=installer /root/.local/share/pnpm/ /usr/local/
 
 RUN addgroup -g $GID coder 2>/dev/null; \
     GROUP_NAME=$(getent group $GID | cut -d: -f1); \
