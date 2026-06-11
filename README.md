@@ -5,7 +5,7 @@ A secure Docker container for running [OpenCode](https://opencode.ai) with confi
 ## Quick start
 
 ```bash
-git clone <repository-url> safe-opencode
+git clone git@github.com:oscardelgado02/opencode-dockerized.git safe-opencode
 cd safe-opencode
 cp .env.safe .env
 # Edit .env with your UID/GID and API keys
