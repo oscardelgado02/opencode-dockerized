@@ -1,0 +1,204 @@
+#!/bin/bash
+set -e
+
+IMAGE_NAME="safe-opencode"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONTEXT_DIR="$SCRIPT_DIR"
+
+ENV_FILE=""
+PRESET=""
+MODEL=""
+LOCAL_MODEL=""
+DMR_URL="http://model-runner.docker.internal:12434"
+USE_LOCAL_MODEL=false
+BUILD_IMAGE=false
+SHOW_HELP=false
+WORKDIR="$(pwd)"
+CONFIG_VOLUME="opencode-config"
+AUTH_VOLUME="opencode-auth"
+CACHE_VOLUME="opencode-cache"
+
+show_help() {
+    cat <<EOF
+Usage: safe-code [OPTIONS]
+
+A secure Docker wrapper for OpenCode with configurable permissions.
+
+PRESETS:
+    --safe              All permissions set to "ask" (default, most secure)
+    --auto              All permissions set to "allow" (for automated workflows)
+    --balanced          Read/glob/grep/list allowed, others require approval
+
+OPTIONS:
+    --env-file <file>   Use a custom .env file for configuration
+    --model <model>     Use a specific cloud model (e.g., "anthropic/claude-3-opus")
+    --local-model <m>   Use a local model via Docker Model Runner (e.g., "ai/smollm2", "ai/qwen2.5-coder")
+    --dmr-url <url>     Docker Model Runner URL (default: http://model-runner.docker.internal:12434)
+    --workdir <dir>     Working directory to mount (default: current directory)
+    --build             Rebuild the Docker image before running
+    --help              Show this help message
+
+EXAMPLES:
+    safe-code                              # Run with safe defaults
+    safe-code --auto                       # Run with all permissions allowed
+    safe-code --balanced                   # Read allowed, writes need approval
+    safe-code --env-file .env.custom       # Use a custom env file
+    safe-code --model anthropic/claude-3-opus
+    safe-code --local-model ai/smollm2     # Use local model via Docker Model Runner
+    safe-code --build                      # Rebuild and run
+
+ENVIRONMENT VARIABLES:
+    Set in your .env file or export before running:
+    ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY
+    OPENCODE_PERMISSION_READ, OPENCODE_PERMISSION_EDIT, OPENCODE_PERMISSION_BASH,
+    OPENCODE_PERMISSION_GLOB, OPENCODE_PERMISSION_GREP, OPENCODE_PERMISSION_LIST,
+    OPENCODE_PERMISSION_WEBFETCH, OPENCODE_PERMISSION_WEBSEARCH,
+    OPENCODE_PERMISSION_TASK, OPENCODE_PERMISSION_EXTERNAL_DIRECTORY,
+    OPENCODE_MODEL, OPENCODE_LOCAL_MODEL_URL
+
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --safe)
+            PRESET="safe"
+            shift
+            ;;
+        --auto)
+            PRESET="auto"
+            shift
+            ;;
+        --balanced)
+            PRESET="balanced"
+            shift
+            ;;
+        --env-file)
+            ENV_FILE="$2"
+            shift 2
+            ;;
+        --model)
+            MODEL="$2"
+            shift 2
+            ;;
+        --local-model)
+            LOCAL_MODEL="$2"
+            USE_LOCAL_MODEL=true
+            shift 2
+            ;;
+        --dmr-url)
+            DMR_URL="$2"
+            shift 2
+            ;;
+        --workdir)
+            WORKDIR="$2"
+            shift 2
+            ;;
+        --build)
+            BUILD_IMAGE=true
+            shift
+            ;;
+        --help)
+            SHOW_HELP=true
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            show_help
+            exit 1
+            ;;
+    esac
+done
+
+if [ "$SHOW_HELP" = true ]; then
+    show_help
+    exit 0
+fi
+
+if [ -n "$PRESET" ]; then
+    PRESET_FILE="$CONTEXT_DIR/.env.$PRESET"
+    if [ ! -f "$PRESET_FILE" ]; then
+        echo "Error: Preset file not found: $PRESET_FILE"
+        exit 1
+    fi
+    ENV_FILE="$PRESET_FILE"
+fi
+
+if [ -z "$ENV_FILE" ] && [ -f "$CONTEXT_DIR/.env" ]; then
+    ENV_FILE="$CONTEXT_DIR/.env"
+fi
+
+if [ -n "$ENV_FILE" ]; then
+    set -a
+    source "$ENV_FILE"
+    set +a
+fi
+
+if [ -n "$MODEL" ]; then
+    export OPENCODE_MODEL="$MODEL"
+fi
+
+if [ "$USE_LOCAL_MODEL" = true ]; then
+    export OPENCODE_MODEL="$LOCAL_MODEL"
+    export OPENCODE_LOCAL_MODEL_URL="$DMR_URL"
+fi
+
+if [ "$BUILD_IMAGE" = true ] || ! docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
+    echo "Building Docker image..."
+    docker build \
+        --build-arg UID="${UID:-$(id -u)}" \
+        --build-arg GID="${GID:-$(id -g)}" \
+        --build-arg NODE_VERSION="${NODE_VERSION:-alpine}" \
+        --build-arg PNPM_VERSION="${PNPM_VERSION:-latest}" \
+        --build-arg OPENCODE_VERSION="${OPENCODE_VERSION:-latest}" \
+        -t "$IMAGE_NAME" "$CONTEXT_DIR"
+fi
+
+DOCKER_ARGS=(
+    --rm
+    -it
+    --read-only
+    --security-opt=no-new-privileges
+    --cap-drop=ALL
+    --tmpfs /tmp
+    --memory=512m
+    --cpus=1
+    --pids-limit=100
+    --add-host=model-runner.docker.internal:host-gateway
+    -v "$WORKDIR:/workspace:rw"
+    -v "$CONFIG_VOLUME:/home/coder/.config/opencode"
+    -v "$AUTH_VOLUME:/home/coder/.local/share/opencode"
+    -v "$CACHE_VOLUME:/home/coder/.cache/opencode"
+    -e OPENCODE_PERMISSION_READ="${OPENCODE_PERMISSION_READ:-ask}"
+    -e OPENCODE_PERMISSION_EDIT="${OPENCODE_PERMISSION_EDIT:-ask}"
+    -e OPENCODE_PERMISSION_BASH="${OPENCODE_PERMISSION_BASH:-ask}"
+    -e OPENCODE_PERMISSION_GLOB="${OPENCODE_PERMISSION_GLOB:-ask}"
+    -e OPENCODE_PERMISSION_GREP="${OPENCODE_PERMISSION_GREP:-ask}"
+    -e OPENCODE_PERMISSION_LIST="${OPENCODE_PERMISSION_LIST:-ask}"
+    -e OPENCODE_PERMISSION_WEBFETCH="${OPENCODE_PERMISSION_WEBFETCH:-ask}"
+    -e OPENCODE_PERMISSION_WEBSEARCH="${OPENCODE_PERMISSION_WEBSEARCH:-ask}"
+    -e OPENCODE_PERMISSION_TASK="${OPENCODE_PERMISSION_TASK:-ask}"
+    -e OPENCODE_PERMISSION_EXTERNAL_DIRECTORY="${OPENCODE_PERMISSION_EXTERNAL_DIRECTORY:-ask}"
+)
+
+if [ -n "${OPENCODE_MODEL:-}" ]; then
+    DOCKER_ARGS+=(-e OPENCODE_MODEL="$OPENCODE_MODEL")
+fi
+
+if [ -n "${OPENCODE_LOCAL_MODEL_URL:-}" ]; then
+    DOCKER_ARGS+=(-e OPENCODE_LOCAL_MODEL_URL="$OPENCODE_LOCAL_MODEL_URL")
+fi
+
+if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+    DOCKER_ARGS+=(-e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY")
+fi
+
+if [ -n "${OPENAI_API_KEY:-}" ]; then
+    DOCKER_ARGS+=(-e OPENAI_API_KEY="$OPENAI_API_KEY")
+fi
+
+if [ -n "${GOOGLE_API_KEY:-}" ]; then
+    DOCKER_ARGS+=(-e GOOGLE_API_KEY="$GOOGLE_API_KEY")
+fi
+
+exec docker run "${DOCKER_ARGS[@]}" "$IMAGE_NAME"

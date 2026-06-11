@@ -1,156 +1,55 @@
 # Safe OpenCode Docker Setup
 
-This setup provides a secure Docker container for running [OpenCode](https://opencode.ai) with restricted permissions. OpenCode will always ask for explicit approval before editing files, running commands, or accessing the network.
+A secure Docker container for running [OpenCode](https://opencode.ai) with configurable permissions, persistent config, and optional local model support via [Docker Model Runner](https://docs.docker.com/ai/model-runner/).
 
----
-
-## Quick Start
-
-### 1. Build the Docker Image
+## Quick start
 
 ```bash
-docker build --build-arg UID=$(id -u) --build-arg GID=$(id -g) --no-cache -t safe-opencode .
+git clone <repository-url> safe-opencode
+cd safe-opencode
+cp .env.safe .env
+# Edit .env with your UID/GID and API keys
+sudo cp safe-code /usr/local/bin/ && sudo chmod +x /usr/local/bin/safe-code
+safe-code
 ```
 
-- `--build-arg UID=$(id -u)`: Matches the container user to your host UID.
-- `--build-arg GID=$(id -g)`: Matches the container group to your host GID.
-- `--no-cache`: Ensures a fresh build.
-- `-t safe-opencode`: Tags the image for easy reference.
+## Security features
 
----
+- Non-root user with host UID/GID mapping
+- Read-only filesystem (except workspace and config volumes)
+- No new privileges, all capabilities dropped
+- Memory, CPU, and PID limits enforced
+- pnpm installation with integrity checksums
+- Persistent config and auth volumes (API keys survive restarts)
 
-### 2. Add the Alias
-Add this to your `~/.bashrc` or `~/.zshrc`:
+## Presets
+
+| Preset | Flag | Description |
+|--------|------|-------------|
+| Safe | `--safe` | All permissions require approval |
+| Auto | `--auto` | All permissions pre-approved |
+| Balanced | `--balanced` | Read/search allowed, writes need approval |
+
+## Local models
+
+Uses [Docker Model Runner](https://docs.docker.com/ai/model-runner/) for local inference (OpenAI-compatible API, no extra container needed):
 
 ```bash
-alias safe-opencode='docker run --rm -it \
-  -v "$HOME/.config/opencode/opencode.json:/home/coder/.config/opencode/opencode.json:ro" \
-  -v "$(pwd):/workspace:rw" \
-  safe-opencode'
+docker model pull ai/smollm2
+safe-code --local-model ai/smollm2
 ```
 
-- `--rm`: Removes the container after exit.
-- `-it`: Interactive terminal.
-- `-v "$HOME/.config/opencode/opencode.json:..."`: Mounts your config file (read-only).
-- `-v "$(pwd):/workspace:rw"`: Mounts your current directory for read/write access.
+## Documentation
 
-Reload your shell:
-
-```bash
-source ~/.bashrc  # or source ~/.zshrc
-```
-
----
-### 3. Run OpenCode
-
-```bash
-safe-opencode
-```
-
-or:
-
-```bash
-docker run --rm -it -e HOME=/home/coder -v "$(pwd):/workspace:rw" safe-opencode
-```
-
----
-
-## Files Explained
-
-### 🐳 `Dockerfile`
-- Multi-stage build: Reduces image size by discarding build-time dependencies.
-- Non-root user: Runs as a non-root user (`coder`) with your host UID/GID.
-- OpenCode via pnpm: Installs OpenCode securely using `pnpm`.
-- Config file: Copies `opencode.json` to enforce restricted permissions.
-
-#### Stages:
-1. Base: Installs Node.js, npm, and dependencies.
-2. Installer: Installs OpenCode using `pnpm`.
-3. Final: Copies only necessary files and sets up the non-root user.
-
----
-### `opencode.json`
-
-```bash
-{
-  "$schema": "https://opencode.ai/opencode.json",
-  "permission": {
-    "edit": "ask",
-    "bash": "ask",
-    "read": "ask",
-    "write": "ask",
-    "run": "ask",
-    "fileSystem": "ask",
-    "network": "ask"
-  }
-}
-```
-
-- All permissions set to `"ask"`: OpenCode will prompt you before performing any sensitive action.
-
-| Permission   | Description                          |
-|--------------|--------------------------------------|
-| `edit`         | File edits                           |
-| `bash`         | Shell command execution              |
-| `read`         | Reading files                        |
-| `write`        | Writing files                        |
-| `run`          | Running scripts/executables          |
-| `fileSystem`   | Filesystem access (e.g., `ls`)         |
-| `network`      | Network access (e.g., `curl`)          |
-
----
-
-## Customization
-
-### Update Permissions
-Edit `opencode.json` to adjust permissions. Example:
-
-
-```bash
-{
-  "$schema": "https://opencode.ai/opencode.json",
-  "permission": {
-    "edit": "ask",
-    "bash": "deny",
-    "read": "allow",
-    "write": "ask",
-    "run": "deny",
-    "fileSystem": "ask",
-    "network": "deny"
-  }
-}
-```
-
-### Rebuild the Image
-After updating the config:
-
-```bash
-docker build --build-arg UID=$(id -u) --build-arg GID=$(id -g) --no-cache -t safe-opencode .
-```
-
----
-## Tips
-
-### Persist OpenCode Cache
-Add a volume for the cache directory:
-
-```bash
-alias safe-opencode='docker run --rm -it \
-  -v "$HOME/.config/opencode/opencode.json:/home/coder/.config/opencode/opencode.json:ro" \
-  -v "$HOME/.cache/opencode:/home/coder/.cache/opencode" \
-  -v "$(pwd):/workspace:rw" \
-  safe-opencode'
-```
-
-### Use a Specific Version
-Update the Dockerfile to pin a version:
-
-```bash
-RUN pnpm add -g opencode-ai@1.2.3
-```
-
----
+- [Installation](docs/installation.md) - Prerequisites, setup, and version pinning
+- [Usage](docs/usage.md) - Running, presets, models, Docker Compose
+- [Configuration](docs/configuration.md) - Environment variables, permissions, presets
+- [Security](docs/security.md) - Hardening details and recommendations
+- [Troubleshooting](docs/troubleshooting.md) - Common issues and fixes
+- [Uninstallation](docs/uninstallation.md) - Complete removal steps
 
 ## Resources
+
 - [OpenCode Documentation](https://opencode.ai/docs)
 - [OpenCode GitHub](https://github.com/anomalyco/opencode)
+- [Docker Model Runner](https://docs.docker.com/ai/model-runner/)

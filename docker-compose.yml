@@ -1,0 +1,50 @@
+services:
+  opencode:
+    build:
+      context: .
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+        NODE_VERSION: ${NODE_VERSION:-alpine}
+        PNPM_VERSION: ${PNPM_VERSION:-latest}
+        OPENCODE_VERSION: ${OPENCODE_VERSION:-latest}
+    image: safe-opencode
+    read_only: true
+    security_opt:
+      - no-new-privileges
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '1'
+        reservations:
+          memory: 256m
+    pids_limit: 100
+    volumes:
+      - ${WORKDIR:-.}:/workspace:rw
+      - opencode-config:/home/coder/.config/opencode
+      - opencode-auth:/home/coder/.local/share/opencode
+      - opencode-cache:/home/coder/.cache/opencode
+    env_file:
+      - ${ENV_FILE:-.env}
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+    extra_hosts:
+      - "model-runner.docker.internal:host-gateway"
+    networks:
+      - opencode-network
+
+volumes:
+  opencode-config:
+  opencode-auth:
+  opencode-cache:
+
+networks:
+  opencode-network:
+    driver: bridge
