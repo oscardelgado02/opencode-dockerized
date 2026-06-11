@@ -9,7 +9,7 @@
 ## 1. Clone the repository
 
 ```bash
-git clone <repository-url> safe-opencode
+git clone git@github.com:oscardelgado02/opencode-dockerized.git safe-opencode
 cd safe-opencode
 ```
 
