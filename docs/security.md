@@ -4,11 +4,8 @@
 
 This setup applies multiple layers of security:
 
-- **Non-root user**: The container runs as an unprivileged user (`coder`) with your host UID/GID, preventing root-level access.
-- **Read-only filesystem**: The container's root filesystem is mounted read-only. Only `/tmp`, `/workspace`, and the config/auth/cache volumes are writable.
-- **No new privileges**: The `no-new-privileges` security option prevents the process from gaining additional privileges via setuid/setgid binaries.
-- **Dropped capabilities**: All Linux capabilities are dropped (`--cap-drop=ALL`), removing the ability to perform privileged operations.
-- **Resource limits**: Memory (512MB), CPU (1 core), and PID (100 processes) limits prevent resource exhaustion.
+- **Non-root user**: The container runs as an unprivileged user (`coder`), preventing root-level access.
+- **Isolated workspace**: Only `/workspace` is mounted from the host with read-write access.
 - **Package integrity**: Uses pnpm for installation with integrity checksums instead of piping scripts from the internet.
 
 ## Permission model

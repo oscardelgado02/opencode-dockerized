@@ -1,9 +1,8 @@
 #!/bin/bash
 set -e
 
-IMAGE_NAME="safe-opencode"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONTEXT_DIR="$SCRIPT_DIR"
+COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
 
 ENV_FILE=""
 PRESET=""
@@ -14,9 +13,6 @@ USE_LOCAL_MODEL=false
 BUILD_IMAGE=false
 SHOW_HELP=false
 WORKDIR="$(pwd)"
-CONFIG_VOLUME="opencode-config"
-AUTH_VOLUME="opencode-auth"
-CACHE_VOLUME="opencode-cache"
 
 show_help() {
     cat <<EOF
@@ -116,7 +112,7 @@ if [ "$SHOW_HELP" = true ]; then
 fi
 
 if [ -n "$PRESET" ]; then
-    PRESET_FILE="$CONTEXT_DIR/.env.$PRESET"
+    PRESET_FILE="$SCRIPT_DIR/.env.$PRESET"
     if [ ! -f "$PRESET_FILE" ]; then
         echo "Error: Preset file not found: $PRESET_FILE"
         exit 1
@@ -124,8 +120,8 @@ if [ -n "$PRESET" ]; then
     ENV_FILE="$PRESET_FILE"
 fi
 
-if [ -z "$ENV_FILE" ] && [ -f "$CONTEXT_DIR/.env" ]; then
-    ENV_FILE="$CONTEXT_DIR/.env"
+if [ -z "$ENV_FILE" ] && [ -f "$SCRIPT_DIR/.env" ]; then
+    ENV_FILE="$SCRIPT_DIR/.env"
 fi
 
 if [ -n "$ENV_FILE" ]; then
@@ -133,6 +129,8 @@ if [ -n "$ENV_FILE" ]; then
     source "$ENV_FILE"
     set +a
 fi
+
+export WORKDIR
 
 if [ -n "$MODEL" ]; then
     export OPENCODE_MODEL="$MODEL"
@@ -143,62 +141,25 @@ if [ "$USE_LOCAL_MODEL" = true ]; then
     export OPENCODE_LOCAL_MODEL_URL="$DMR_URL"
 fi
 
-if [ "$BUILD_IMAGE" = true ] || ! docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
-    echo "Building Docker image..."
-    docker build \
-        --build-arg UID="${UID:-$(id -u)}" \
-        --build-arg GID="${GID:-$(id -g)}" \
-        --build-arg NODE_VERSION="${NODE_VERSION:-alpine}" \
-        --build-arg PNPM_VERSION="${PNPM_VERSION:-latest}" \
-        --build-arg OPENCODE_VERSION="${OPENCODE_VERSION:-latest}" \
-        -t "$IMAGE_NAME" "$CONTEXT_DIR"
+COMPOSE_CMD=(docker compose -f "$COMPOSE_FILE")
+
+if [ -n "$ENV_FILE" ]; then
+    COMPOSE_CMD+=(--env-file "$ENV_FILE")
 fi
 
-DOCKER_ARGS=(
-    --rm
-    -it
-    --read-only
-    --security-opt=no-new-privileges
-    --cap-drop=ALL
-    --tmpfs /tmp
-    --memory=512m
-    --cpus=1
-    --pids-limit=100
-    --add-host=model-runner.docker.internal:host-gateway
-    -v "$WORKDIR:/workspace:rw"
-    -v "$CONFIG_VOLUME:/home/coder/.config/opencode"
-    -v "$AUTH_VOLUME:/home/coder/.local/share/opencode"
-    -v "$CACHE_VOLUME:/home/coder/.cache/opencode"
-    -e OPENCODE_PERMISSION_READ="${OPENCODE_PERMISSION_READ:-ask}"
-    -e OPENCODE_PERMISSION_EDIT="${OPENCODE_PERMISSION_EDIT:-ask}"
-    -e OPENCODE_PERMISSION_BASH="${OPENCODE_PERMISSION_BASH:-ask}"
-    -e OPENCODE_PERMISSION_GLOB="${OPENCODE_PERMISSION_GLOB:-ask}"
-    -e OPENCODE_PERMISSION_GREP="${OPENCODE_PERMISSION_GREP:-ask}"
-    -e OPENCODE_PERMISSION_LIST="${OPENCODE_PERMISSION_LIST:-ask}"
-    -e OPENCODE_PERMISSION_WEBFETCH="${OPENCODE_PERMISSION_WEBFETCH:-ask}"
-    -e OPENCODE_PERMISSION_WEBSEARCH="${OPENCODE_PERMISSION_WEBSEARCH:-ask}"
-    -e OPENCODE_PERMISSION_TASK="${OPENCODE_PERMISSION_TASK:-ask}"
-    -e OPENCODE_PERMISSION_EXTERNAL_DIRECTORY="${OPENCODE_PERMISSION_EXTERNAL_DIRECTORY:-ask}"
-)
+if [ "$BUILD_IMAGE" = true ] || ! docker image inspect safe-opencode >/dev/null 2>&1; then
+    echo "Building Docker image..."
+    "${COMPOSE_CMD[@]}" build
+fi
+
+RUN_ARGS=(--rm)
 
 if [ -n "${OPENCODE_MODEL:-}" ]; then
-    DOCKER_ARGS+=(-e OPENCODE_MODEL="$OPENCODE_MODEL")
+    RUN_ARGS+=(-e OPENCODE_MODEL="$OPENCODE_MODEL")
 fi
 
 if [ -n "${OPENCODE_LOCAL_MODEL_URL:-}" ]; then
-    DOCKER_ARGS+=(-e OPENCODE_LOCAL_MODEL_URL="$OPENCODE_LOCAL_MODEL_URL")
+    RUN_ARGS+=(-e OPENCODE_LOCAL_MODEL_URL="$OPENCODE_LOCAL_MODEL_URL")
 fi
 
-if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
-    DOCKER_ARGS+=(-e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY")
-fi
-
-if [ -n "${OPENAI_API_KEY:-}" ]; then
-    DOCKER_ARGS+=(-e OPENAI_API_KEY="$OPENAI_API_KEY")
-fi
-
-if [ -n "${GOOGLE_API_KEY:-}" ]; then
-    DOCKER_ARGS+=(-e GOOGLE_API_KEY="$GOOGLE_API_KEY")
-fi
-
-exec docker run "${DOCKER_ARGS[@]}" "$IMAGE_NAME"
+exec "${COMPOSE_CMD[@]}" run "${RUN_ARGS[@]}" opencode

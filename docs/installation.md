@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) (v20.10+)
-- [Docker Compose](https://docs.docker.com/compose/install/) (v2+, optional)
+- [Docker Compose](https://docs.docker.com/compose/install/) (v2+, required)
 - [Docker Model Runner](https://docs.docker.com/ai/model-runner/) (optional, for local models)
 
 ## 1. Clone the repository
@@ -28,15 +28,7 @@ cp .env.auto .env
 cp .env.balanced .env
 ```
 
-Edit `.env` to set your UID/GID and API keys:
-
-```bash
-# Find your UID/GID
-id -u   # e.g., 1000
-id -g   # e.g., 1000
-```
-
-Add your API keys to `.env`:
+Edit `.env` to add your API keys:
 
 ```
 ANTHROPIC_API_KEY=sk-ant-...
@@ -70,10 +62,10 @@ The image builds automatically on first run, or build manually:
 safe-code --build
 ```
 
-Or directly with Docker:
+Or directly with Docker Compose:
 
 ```bash
-docker build --build-arg UID=$(id -u) --build-arg GID=$(id -g) -t safe-opencode .
+docker compose build
 ```
 
 ## Pinning specific versions

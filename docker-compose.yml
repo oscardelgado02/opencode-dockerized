@@ -9,21 +9,6 @@ services:
         PNPM_VERSION: ${PNPM_VERSION:-latest}
         OPENCODE_VERSION: ${OPENCODE_VERSION:-latest}
     image: safe-opencode
-    read_only: true
-    security_opt:
-      - no-new-privileges
-    cap_drop:
-      - ALL
-    tmpfs:
-      - /tmp
-    deploy:
-      resources:
-        limits:
-          memory: 512m
-          cpus: '1'
-        reservations:
-          memory: 256m
-    pids_limit: 100
     volumes:
       - ${WORKDIR:-.}:/workspace:rw
       - opencode-config:/home/coder/.config/opencode
@@ -32,19 +17,21 @@ services:
     env_file:
       - ${ENV_FILE:-.env}
     environment:
+      - OPENCODE_PERMISSION_READ=${OPENCODE_PERMISSION_READ:-ask}
+      - OPENCODE_PERMISSION_EDIT=${OPENCODE_PERMISSION_EDIT:-ask}
+      - OPENCODE_PERMISSION_BASH=${OPENCODE_PERMISSION_BASH:-ask}
+      - OPENCODE_PERMISSION_GLOB=${OPENCODE_PERMISSION_GLOB:-ask}
+      - OPENCODE_PERMISSION_GREP=${OPENCODE_PERMISSION_GREP:-ask}
+      - OPENCODE_PERMISSION_LIST=${OPENCODE_PERMISSION_LIST:-ask}
+      - OPENCODE_PERMISSION_WEBFETCH=${OPENCODE_PERMISSION_WEBFETCH:-ask}
+      - OPENCODE_PERMISSION_WEBSEARCH=${OPENCODE_PERMISSION_WEBSEARCH:-ask}
+      - OPENCODE_PERMISSION_TASK=${OPENCODE_PERMISSION_TASK:-ask}
+      - OPENCODE_PERMISSION_EXTERNAL_DIRECTORY=${OPENCODE_PERMISSION_EXTERNAL_DIRECTORY:-ask}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
-    extra_hosts:
-      - "model-runner.docker.internal:host-gateway"
-    networks:
-      - opencode-network
 
 volumes:
   opencode-config:
   opencode-auth:
   opencode-cache:
-
-networks:
-  opencode-network:
-    driver: bridge

@@ -25,8 +25,8 @@ EOF
 )
 
   if [ -n "$OPENCODE_MODEL" ]; then
-      if [ -n "$OPENCODE_LOCAL_MODEL_URL" ]; then
-          cat > "$CONFIG_FILE" <<EOF
+    if [ -n "$OPENCODE_LOCAL_MODEL_URL" ]; then
+      cat > "$CONFIG_FILE" <<DMREOF
 {
   "\$schema": "https://opencode.ai/config.json",
 $PERMISSION_BLOCK,
@@ -46,23 +46,23 @@ $PERMISSION_BLOCK,
   },
   "model": "dmr/$OPENCODE_MODEL"
 }
-EOF
-      else
-          cat > "$CONFIG_FILE" <<EOF
+DMREOF
+    else
+      cat > "$CONFIG_FILE" <<MODELEOF
 {
   "\$schema": "https://opencode.ai/config.json",
 $PERMISSION_BLOCK,
   "model": "$OPENCODE_MODEL"
 }
-EOF
-      fi
+MODELEOF
+    fi
   else
-      cat > "$CONFIG_FILE" <<EOF
+    cat > "$CONFIG_FILE" <<BASEEOF
 {
   "\$schema": "https://opencode.ai/config.json",
 $PERMISSION_BLOCK
 }
-EOF
+BASEEOF
   fi
 fi
 

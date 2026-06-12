@@ -8,19 +8,17 @@ A secure Docker container for running [OpenCode](https://opencode.ai) with confi
 git clone git@github.com:oscardelgado02/opencode-dockerized.git safe-opencode
 cd safe-opencode
 cp .env.safe .env
-# Edit .env with your UID/GID and API keys
+# Edit .env with your API keys
 sudo cp safe-code /usr/local/bin/ && sudo chmod +x /usr/local/bin/safe-code
 safe-code
 ```
 
 ## Security features
 
-- Non-root user with host UID/GID mapping
-- Read-only filesystem (except workspace and config volumes)
-- No new privileges, all capabilities dropped
-- Memory, CPU, and PID limits enforced
+- Non-root user
+- Configurable permission model (ask/allow/deny per operation)
 - pnpm installation with integrity checksums
-- Persistent config and auth volumes (API keys survive restarts)
+- Persistent config and auth volumes (provider credentials survive restarts)
 
 ## Presets
 

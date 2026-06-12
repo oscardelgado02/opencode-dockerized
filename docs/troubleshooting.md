@@ -2,16 +2,10 @@
 
 ## Permission denied when accessing files
 
-The container user must match your host user. Rebuild with your UID/GID:
+The container runs as user `coder` (UID 1000). If you have permission issues, ensure your workspace directory is accessible to UID 1000, or rebuild with a different UID/GID:
 
 ```bash
-docker build --build-arg UID=$(id -u) --build-arg GID=$(id -g) -t safe-opencode .
-```
-
-Or update `UID` and `GID` in your `.env` file and rebuild:
-
-```bash
-safe-code --build
+docker compose build --build-arg UID=$(id -u) --build-arg GID=$(id -g)
 ```
 
 ## API key not persisting between sessions
@@ -60,7 +54,7 @@ safe-code --local-model ai/smollm2 --dmr-url http://172.17.0.1:12434
 Try building with no cache:
 
 ```bash
-docker build --no-cache --build-arg UID=$(id -u) --build-arg GID=$(id -g) -t safe-opencode .
+docker compose build --no-cache
 ```
 
 ## Container exits immediately
@@ -68,7 +62,7 @@ docker build --no-cache --build-arg UID=$(id -u) --build-arg GID=$(id -g) -t saf
 Run with debug output:
 
 ```bash
-docker run --rm -it --entrypoint /bin/sh safe-opencode
+docker compose run --rm --entrypoint /bin/sh opencode
 ```
 
 Then manually run `opencode` to see error messages.

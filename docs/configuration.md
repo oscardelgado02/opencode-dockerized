@@ -8,8 +8,6 @@ All configuration is done through environment variables, typically set in a `.en
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `UID` | Host user ID | `1000` |
-| `GID` | Host group ID | `1000` |
 | `NODE_VERSION` | Node.js base image tag | `alpine` |
 | `PNPM_VERSION` | pnpm version to install | `latest` |
 | `OPENCODE_VERSION` | opencode-ai version to install | `latest` |

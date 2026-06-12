@@ -100,6 +100,8 @@ safe-code -- --help
 
 ## Docker Compose
 
+The `safe-code` script uses Docker Compose internally. You can also use compose directly:
+
 ```bash
 # Run OpenCode (uses .env by default)
 docker compose run --rm opencode

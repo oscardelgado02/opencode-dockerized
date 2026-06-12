@@ -31,6 +31,7 @@ ARG GID=1000
 
 RUN apk add --no-cache bash libstdc++ libgcc
 
+COPY --from=installer /usr/local/bin/node /usr/local/bin/node
 COPY --from=installer /usr/local/lib/node_modules /usr/local/lib/node_modules
 COPY --from=installer /root/.local/share/pnpm/ /usr/local/
 
