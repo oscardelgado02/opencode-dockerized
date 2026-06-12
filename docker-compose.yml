@@ -10,7 +10,6 @@ services:
         OPENCODE_VERSION: ${OPENCODE_VERSION:-latest}
     image: safe-opencode
     volumes:
-      - ${WORKDIR:-.}:/workspace:rw
       - opencode-config:/home/coder/.config/opencode
       - opencode-auth:/home/coder/.local/share/opencode
       - opencode-cache:/home/coder/.cache/opencode

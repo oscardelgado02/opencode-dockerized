@@ -154,7 +154,7 @@ if [ "$BUILD_IMAGE" = true ] || ! docker image inspect safe-opencode >/dev/null 
     "${COMPOSE_CMD[@]}" build
 fi
 
-RUN_ARGS=(--rm)
+RUN_ARGS=(--rm -v "$WORKDIR:/workspace:rw")
 
 if [ -n "${OPENCODE_MODEL:-}" ]; then
     RUN_ARGS+=(-e OPENCODE_MODEL="$OPENCODE_MODEL")

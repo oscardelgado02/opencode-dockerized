@@ -26,7 +26,7 @@ If no `--env-file` or preset is specified, `.env` in the script directory is use
 
 ## Working directory
 
-Mount a specific project directory:
+By default, `safe-code` mounts your current working directory into the container as `/workspace`. You can override this:
 
 ```bash
 safe-code --workdir /path/to/your/project
@@ -90,27 +90,14 @@ docker model ls
 safe-code --build
 ```
 
-## Passing arguments to OpenCode
-
-Any extra arguments after `--` are passed directly to the `opencode` command:
-
-```bash
-safe-code -- --help
-```
-
 ## Docker Compose
 
-The `safe-code` script uses Docker Compose internally. You can also use compose directly:
+The `safe-code` script uses Docker Compose internally. The workspace volume is mounted by the script at runtime, so using `docker compose run` directly requires you to pass the volume mount manually:
 
 ```bash
-# Run OpenCode (uses .env by default)
-docker compose run --rm opencode
-
 # Run with a specific env file
-ENV_FILE=.env.auto docker compose run --rm opencode
+ENV_FILE=.env.auto docker compose run --rm -v "$(pwd):/workspace:rw" opencode
 
 # Run with a local model
-OPENCODE_MODEL=ai/smollm2 OPENCODE_LOCAL_MODEL_URL=http://model-runner.docker.internal:12434 docker compose run --rm opencode
+OPENCODE_MODEL=ai/smollm2 OPENCODE_LOCAL_MODEL_URL=http://model-runner.docker.internal:12434 docker compose run --rm -v "$(pwd):/workspace:rw" opencode
 ```
-
-DMR runs on the host and is accessible from the container via the `extra_hosts` mapping already configured in `docker-compose.yml`.

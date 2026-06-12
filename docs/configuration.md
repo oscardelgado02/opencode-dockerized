@@ -11,7 +11,6 @@ All configuration is done through environment variables, typically set in a `.en
 | `NODE_VERSION` | Node.js base image tag | `alpine` |
 | `PNPM_VERSION` | pnpm version to install | `latest` |
 | `OPENCODE_VERSION` | opencode-ai version to install | `latest` |
-| `WORKDIR` | Host directory to mount as workspace | `.` |
 | `ENV_FILE` | Path to env file (docker-compose only) | `.env` |
 
 ### Permissions
