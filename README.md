@@ -9,7 +9,10 @@ git clone git@github.com:oscardelgado02/opencode-dockerized.git safe-opencode
 cd safe-opencode
 cp .env.safe .env
 # Edit .env with your API keys
+sudo mkdir -p /usr/local/share/safe-code
+sudo cp Dockerfile docker-compose.yml entrypoint.sh .env.safe .env.auto .env.balanced /usr/local/share/safe-code/
 sudo cp safe-code /usr/local/bin/ && sudo chmod +x /usr/local/bin/safe-code
+export SAFE_CODE_HOME=/usr/local/share/safe-code
 safe-code
 ```
 

@@ -41,18 +41,29 @@ GOOGLE_API_KEY=...
 System-wide:
 
 ```bash
+sudo mkdir -p /usr/local/share/safe-code
+sudo cp Dockerfile docker-compose.yml entrypoint.sh .env.safe .env.auto .env.balanced /usr/local/share/safe-code/
+[ -f .env ] && sudo cp .env /usr/local/share/safe-code/
 sudo cp safe-code /usr/local/bin/
 sudo chmod +x /usr/local/bin/safe-code
+echo 'export SAFE_CODE_HOME=/usr/local/share/safe-code' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 Or for your user only:
 
 ```bash
+mkdir -p ~/.local/share/safe-code
+cp Dockerfile docker-compose.yml entrypoint.sh .env.safe .env.auto .env.balanced ~/.local/share/safe-code/
+[ -f .env ] && cp .env ~/.local/share/safe-code/
 mkdir -p ~/.local/bin
 cp safe-code ~/.local/bin/
 chmod +x ~/.local/bin/safe-code
-export PATH="$HOME/.local/bin:$PATH"
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
 ```
+
+> **Note:** If you use `zsh` or another shell, replace `~/.bashrc` with `~/.zshrc` or the appropriate profile file.
 
 ## 4. Build the Docker image
 

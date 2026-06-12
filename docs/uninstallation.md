@@ -1,11 +1,19 @@
 # Uninstallation
 
-## 1. Remove the safe-code script
+## 1. Remove the safe-code script and project files
+
+System-wide:
 
 ```bash
 sudo rm /usr/local/bin/safe-code
-# or
+sudo rm -rf /usr/local/share/safe-code
+```
+
+Or for your user only:
+
+```bash
 rm ~/.local/bin/safe-code
+rm -rf ~/.local/share/safe-code
 ```
 
 ## 2. Stop and remove containers
