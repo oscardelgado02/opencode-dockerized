@@ -47,7 +47,7 @@ safe-code --model openai/gpt-4
 > Also, make sure to add enough context window to the model, for example:
 > 
 > ```bash
-> `docker model configure qwen3.5:9B-UD-Q4_K_XL --context-size 131072`
+> docker model configure qwen3.5:9B-UD-Q4_K_XL --context-size 131072
 > ```
 
 [Docker Model Runner (DMR)](https://docs.docker.com/ai/model-runner/) runs AI models locally and exposes an OpenAI-compatible API. No separate container needed.
