@@ -13,6 +13,8 @@ services:
       - opencode-config:/home/coder/.config/opencode
       - opencode-auth:/home/coder/.local/share/opencode
       - opencode-cache:/home/coder/.cache/opencode
+    extra_hosts:
+      - "model-runner.docker.internal:host-gateway"
     env_file:
       - ${ENV_FILE:-.env}
     environment:
@@ -26,6 +28,8 @@ services:
       - OPENCODE_PERMISSION_WEBSEARCH=${OPENCODE_PERMISSION_WEBSEARCH:-ask}
       - OPENCODE_PERMISSION_TASK=${OPENCODE_PERMISSION_TASK:-ask}
       - OPENCODE_PERMISSION_EXTERNAL_DIRECTORY=${OPENCODE_PERMISSION_EXTERNAL_DIRECTORY:-ask}
+      - OPENCODE_MODEL=${OPENCODE_MODEL:-}
+      - OPENCODE_LOCAL_MODEL_URL=${OPENCODE_LOCAL_MODEL_URL:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}

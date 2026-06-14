@@ -9,10 +9,15 @@ git clone git@github.com:oscardelgado02/opencode-dockerized.git safe-opencode
 cd safe-opencode
 cp .env.safe .env
 # Edit .env with your API keys
+
 sudo mkdir -p /usr/local/share/safe-code
 sudo cp Dockerfile docker-compose.yml entrypoint.sh .env.safe .env.auto .env.balanced /usr/local/share/safe-code/
-sudo cp safe-code /usr/local/bin/ && sudo chmod +x /usr/local/bin/safe-code
-export SAFE_CODE_HOME=/usr/local/share/safe-code
+[ -f .env ] && sudo cp .env /usr/local/share/safe-code/
+sudo cp safe-code /usr/local/bin/
+sudo chmod +x /usr/local/bin/safe-code
+echo 'export SAFE_CODE_HOME=/usr/local/share/safe-code' >> ~/.bashrc
+source ~/.bashrc
+
 safe-code
 ```
 
@@ -32,6 +37,9 @@ safe-code
 | Balanced | `--balanced` | Read/search allowed, writes need approval |
 
 ## Local models
+
+> [!IMPORTANT]  
+> To use Docker Model Runner, make sure to uncomment `OPENCODE_LOCAL_MODEL_URL` environment variable in `.env` file before doing the build.
 
 Uses [Docker Model Runner](https://docs.docker.com/ai/model-runner/) for local inference (OpenAI-compatible API, no extra container needed):
 

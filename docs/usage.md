@@ -41,6 +41,9 @@ safe-code --model openai/gpt-4
 
 ## Using a local model via Docker Model Runner
 
+> [!IMPORTANT]  
+> To use Docker Model Runner, make sure to uncomment `OPENCODE_LOCAL_MODEL_URL` environment variable in `.env` file before doing the build.
+
 [Docker Model Runner (DMR)](https://docs.docker.com/ai/model-runner/) runs AI models locally and exposes an OpenAI-compatible API. No separate container needed.
 
 First, make sure DMR is enabled (see [Docker Model Runner setup](#docker-model-runner-setup) below), then pull a model:

@@ -29,7 +29,7 @@ FROM alpine:latest
 ARG UID=1000
 ARG GID=1000
 
-RUN apk add --no-cache bash libstdc++ libgcc
+RUN apk add --no-cache bash libstdc++ libgcc jq
 
 COPY --from=installer /usr/local/bin/node /usr/local/bin/node
 COPY --from=installer /usr/local/lib/node_modules /usr/local/lib/node_modules

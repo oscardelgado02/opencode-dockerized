@@ -38,6 +38,9 @@ GOOGLE_API_KEY=...
 
 ## 3. Install the safe-code script
 
+> [!WARNING]  
+> User installation is not working right now.
+
 System-wide:
 
 ```bash
