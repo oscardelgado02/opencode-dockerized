@@ -40,6 +40,12 @@ safe-code
 
 > [!IMPORTANT]  
 > To use Docker Model Runner, make sure to uncomment `OPENCODE_LOCAL_MODEL_URL` environment variable in `.env` file before doing the build.
+> 
+> Also, make sure to add enough context window to the model, for example:
+> 
+> ```bash
+> `docker model configure qwen3.5:9B-UD-Q4_K_XL --context-size 131072`
+> ```
 
 Uses [Docker Model Runner](https://docs.docker.com/ai/model-runner/) for local inference (OpenAI-compatible API, no extra container needed):
 
