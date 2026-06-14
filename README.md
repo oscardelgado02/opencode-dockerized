@@ -44,7 +44,7 @@ safe-code
 > Also, make sure to add enough context window to the model, for example:
 > 
 > ```bash
-> `docker model configure qwen3.5:9B-UD-Q4_K_XL --context-size 131072`
+> docker model configure qwen3.5:9B-UD-Q4_K_XL --context-size 131072
 > ```
 
 Uses [Docker Model Runner](https://docs.docker.com/ai/model-runner/) for local inference (OpenAI-compatible API, no extra container needed):
