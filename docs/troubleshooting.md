@@ -69,11 +69,24 @@ Then manually run `opencode` to see error messages.
 
 ## Config file not updating
 
-The entrypoint only generates `opencode.json` if it doesn't already exist. To regenerate:
+The entrypoint only generates `opencode.json` if it doesn't already exist. Reset everything instead:
 
 ```bash
-docker volume rm opencode-config
-safe-code --build
+safe-code --reset
+```
+
+Or just remove the config volume: `docker volume rm safe-opencode_opencode-config && safe-code --build`.
+
+## unity-cli skill not showing in opencode
+
+1. Confirm the image was built with Unity: `docker run --rm --entrypoint sh safe-opencode -c 'ls /usr/local/share/opencode-skills'`
+2. Check it landed in the volume: `ls ~/.config/opencode/skills/unity-cli` inside the container
+3. A `--no-unity` build (the default) removes the skill on next container start, but only if you actually rebuild (`safe-code --no-unity` forces one)
+
+## Start completely fresh
+
+```bash
+safe-code --reset   # = docker compose down -v + rebuild + run
 ```
 
 ## Unity CLI: cannot connect to bridge

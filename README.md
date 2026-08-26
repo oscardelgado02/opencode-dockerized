@@ -65,6 +65,14 @@ node bridge\unity-bridge.mjs
 
 Then set `UNITY_BRIDGE_TOKEN` in `.env` and call `unity build ...` from inside opencode. See [Unity integration](docs/unity.md).
 
+The image can also ship a `unity-cli` agent skill (installed into opencode's config on start) so the AI knows how to use the bridge — timeouts, error playbook, path mapping. It is **not** included by default; opt in with `--unity`, or `WITH_UNITY=1` in `.env`.
+
+Reset to a clean slate (erases config/auth/cache volumes and rebuilds):
+
+```bash
+safe-code --reset
+```
+
 ## Documentation
 
 - [Installation](docs/installation.md) - Prerequisites, setup, and version pinning

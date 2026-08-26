@@ -28,8 +28,9 @@ FROM alpine:latest
 
 ARG UID=1000
 ARG GID=1000
+ARG WITH_UNITY=0
 
-RUN apk add --no-cache bash libstdc++ libgcc jq curl
+RUN apk add --no-cache bash libstdc++ libgcc jq
 
 COPY --from=installer /usr/local/bin/node /usr/local/bin/node
 COPY --from=installer /usr/local/lib/node_modules /usr/local/lib/node_modules
@@ -42,8 +43,15 @@ RUN addgroup -g $GID coder 2>/dev/null; \
     && chown -R coder:"$GROUP_NAME" /home/coder /workspace
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+COPY skills/ /usr/local/share/opencode-skills/
 COPY shims/unity /usr/local/bin/unity
-RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/unity
+RUN if [ "$WITH_UNITY" = "1" ]; then \
+      apk add --no-cache curl && chmod +x /usr/local/bin/unity; \
+    else \
+      rm -f /usr/local/bin/unity && rm -rf /usr/local/share/opencode-skills/unity-cli; \
+    fi
 
 USER coder
 WORKDIR /workspace

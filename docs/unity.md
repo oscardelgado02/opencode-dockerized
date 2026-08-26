@@ -79,6 +79,29 @@ bridge-health      # as first arg of `unity`: check bridge connectivity
 
 opencode treats these as normal bash calls — they are gated by `OPENCODE_PERMISSION_BASH` like every other command.
 
+## The unity-cli skill
+
+The image can ship an [agent skill](https://opencode.ai/docs/skills/) (`skills/unity-cli/SKILL.md` in the repo). On every start the entrypoint installs it into the persistent config volume at `~/.config/opencode/skills/unity-cli/`, where opencode discovers it and can load it on demand — so the agent already knows about bridge health checks, timeouts, path mapping, and how to react to each error class.
+
+It is **not** part of the default image. Include/exclude at build time:
+
+```bash
+safe-code --unity        # rebuild WITH the unity command + skill (opt-in)
+safe-code --no-unity     # build without them (default); entrypoint removes a stale skill on next start
+```
+
+Or set `WITH_UNITY=1` in `.env`. Config edits inside the volume get overwritten by image updates; keep custom skills in separate directories.
+
+## Reset everything
+
+Wipes opencode's persistent volumes (config, auth, cache), forces a rebuild, then starts fresh:
+
+```bash
+safe-code --reset
+```
+
+Equivalent to `docker compose down -v` + rebuild. The bridge on your host is untouched.
+
 ## Path mapping
 
 The Unity CLI resolves relative paths against its working directory. Inside the container that is `/workspace/...`, which does not exist on the host. `--path-map` translates them:
