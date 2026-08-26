@@ -29,7 +29,7 @@ FROM alpine:latest
 ARG UID=1000
 ARG GID=1000
 
-RUN apk add --no-cache bash libstdc++ libgcc jq
+RUN apk add --no-cache bash libstdc++ libgcc jq curl
 
 COPY --from=installer /usr/local/bin/node /usr/local/bin/node
 COPY --from=installer /usr/local/lib/node_modules /usr/local/lib/node_modules
@@ -42,7 +42,8 @@ RUN addgroup -g $GID coder 2>/dev/null; \
     && chown -R coder:"$GROUP_NAME" /home/coder /workspace
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY shims/unity /usr/local/bin/unity
+RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/unity
 
 USER coder
 WORKDIR /workspace

@@ -15,6 +15,7 @@ services:
       - opencode-cache:/home/coder/.cache/opencode
     extra_hosts:
       - "model-runner.docker.internal:host-gateway"
+      - "host.docker.internal:host-gateway"
     env_file:
       - ${ENV_FILE:-.env}
     environment:
@@ -30,6 +31,9 @@ services:
       - OPENCODE_PERMISSION_EXTERNAL_DIRECTORY=${OPENCODE_PERMISSION_EXTERNAL_DIRECTORY:-ask}
       - OPENCODE_MODEL=${OPENCODE_MODEL:-}
       - OPENCODE_LOCAL_MODEL_URL=${OPENCODE_LOCAL_MODEL_URL:-}
+      - UNITY_BRIDGE_URL=${UNITY_BRIDGE_URL:-http://host.docker.internal:7777}
+      - UNITY_BRIDGE_TOKEN=${UNITY_BRIDGE_TOKEN:-}
+      - UNITY_TIMEOUT_MS=${UNITY_TIMEOUT_MS:-1800000}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}

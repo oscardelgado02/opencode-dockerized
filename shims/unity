@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# Forward Unity CLI commands to the host machine through the unity bridge.
+# Requires UNITY_BRIDGE_URL (default: http://host.docker.internal:7777)
+# and UNITY_BRIDGE_TOKEN when token auth is enabled on the bridge.
+set -uo pipefail
+
+BRIDGE_URL="${UNITY_BRIDGE_URL:-http://host.docker.internal:7777}"
+BRIDGE_TIMEOUT_MS="${UNITY_TIMEOUT_MS:-1800000}"
+
+die() {
+    printf 'unity-shim: %s\n' "$*" >&2
+    exit 1
+}
+
+if [ "${1:-}" = "bridge-health" ]; then
+    curl -sS --noproxy '*' --max-time 10 "${BRIDGE_URL%/}/health" \
+        || die "cannot reach the bridge at $BRIDGE_URL"
+    printf '\nBridge reachable.\n'
+    exit 0
+fi
+
+PAYLOAD=$(jq -nc \
+    --arg cwd "$PWD" \
+    --argjson timeoutMs "$BRIDGE_TIMEOUT_MS" \
+    '{args: $ARGS.positional, cwd: $cwd, timeoutMs: $timeoutMs}' \
+    --args -- "$@") || die "failed to build request payload"
+
+CURL_ARGS=(-X POST --max-time $((BRIDGE_TIMEOUT_MS / 1000 + 120))
+    -H 'Content-Type: application/json'
+    --data-binary "$PAYLOAD"
+    -w '\n%{http_code}')
+[ -n "${UNITY_BRIDGE_TOKEN:-}" ] && CURL_ARGS+=(-H "x-unity-token: $UNITY_BRIDGE_TOKEN")
+
+RESPONSE=$(curl -sS --noproxy '*' "${CURL_ARGS[@]}" "${BRIDGE_URL%/}/run")
+RC=$?
+
+case "$RC" in
+    0) ;;
+    7)
+        die "cannot connect to bridge at $BRIDGE_URL.
+Start it on the host with: node unity-bridge.mjs" ;;
+    22)
+        die "bridge rejected the request (HTTP error). Check UNITY_BRIDGE_TOKEN." ;;
+    28)
+        die "timed out waiting for the bridge ($((BRIDGE_TIMEOUT_MS / 1000))s).
+Raise it with UNITY_TIMEOUT_MS for long builds." ;;
+    *)
+        die "curl failed with exit code $RC" ;;
+esac
+
+HTTP_CODE=$(printf '%s' "$RESPONSE" | tail -n1)
+BODY=$(printf '%s' "$RESPONSE" | sed '$d')
+
+[ "$HTTP_CODE" = "200" ] || {
+    printf 'unity-shim: bridge returned HTTP %s\n%s\n' "$HTTP_CODE" "$BODY" >&2
+    exit 1
+}
+
+CODE=$(printf '%s' "$BODY" | jq -r '.code // empty')
+SIGNAL=$(printf '%s' "$BODY" | jq -r '.signal // empty')
+TIMED_OUT=$(printf '%s' "$BODY" | jq -r '.timedOut // false')
+
+# -j = raw output, no added newline: preserves the host process byte stream
+printf '%s' "$BODY" | jq -j '.stdout'
+printf '%s' "$BODY" | jq -j '.stderr' >&2
+
+if [ "$TIMED_OUT" = "true" ]; then
+    printf 'unity-shim: remote command timed out\n' >&2
+    exit 124
+fi
+
+if [ -z "$CODE" ]; then
+    if [ -n "$SIGNAL" ]; then
+        printf 'unity-shim: remote command killed by signal %s\n' "$SIGNAL" >&2
+        exit 128
+    fi
+    die "malformed bridge response"
+fi
+
+exit "$CODE"

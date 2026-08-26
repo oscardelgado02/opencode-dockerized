@@ -30,6 +30,8 @@ OPTIONS:
     --model <model>     Use a specific cloud model (e.g., "anthropic/claude-3-opus")
     --local-model <m>   Use a local model via Docker Model Runner (e.g., "ai/smollm2", "ai/qwen2.5-coder")
     --dmr-url <url>     Docker Model Runner URL (default: http://model-runner.docker.internal:12434)
+    --unity-url <url>   Unity bridge URL (default: http://host.docker.internal:7777)
+    --unity-token <t>   Unity bridge auth token (or set UNITY_BRIDGE_TOKEN)
     --workdir <dir>     Working directory to mount (default: current directory)
     --build             Rebuild the Docker image before running
     --help              Show this help message
@@ -53,6 +55,7 @@ ENVIRONMENT VARIABLES:
     OPENCODE_PERMISSION_WEBFETCH, OPENCODE_PERMISSION_WEBSEARCH,
     OPENCODE_PERMISSION_TASK, OPENCODE_PERMISSION_EXTERNAL_DIRECTORY,
     OPENCODE_MODEL, OPENCODE_LOCAL_MODEL_URL
+    UNITY_BRIDGE_URL, UNITY_BRIDGE_TOKEN, UNITY_TIMEOUT_MS
 
 EOF
 }
@@ -90,6 +93,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --workdir)
             WORKDIR="$2"
+            shift 2
+            ;;
+        --unity-url)
+            UNITY_BRIDGE_URL="$2"
+            shift 2
+            ;;
+        --unity-token)
+            UNITY_BRIDGE_TOKEN="$2"
             shift 2
             ;;
         --build)
@@ -162,6 +173,18 @@ fi
 
 if [ -n "${OPENCODE_LOCAL_MODEL_URL:-}" ]; then
     RUN_ARGS+=(-e OPENCODE_LOCAL_MODEL_URL="$OPENCODE_LOCAL_MODEL_URL")
+fi
+
+if [ -n "${UNITY_BRIDGE_URL:-}" ]; then
+    RUN_ARGS+=(-e UNITY_BRIDGE_URL="$UNITY_BRIDGE_URL")
+fi
+
+if [ -n "${UNITY_BRIDGE_TOKEN:-}" ]; then
+    RUN_ARGS+=(-e UNITY_BRIDGE_TOKEN="$UNITY_BRIDGE_TOKEN")
+fi
+
+if [ -n "${UNITY_TIMEOUT_MS:-}" ]; then
+    RUN_ARGS+=(-e UNITY_TIMEOUT_MS="$UNITY_TIMEOUT_MS")
 fi
 
 exec "${COMPOSE_CMD[@]}" run "${RUN_ARGS[@]}" opencode

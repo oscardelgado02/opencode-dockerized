@@ -54,6 +54,17 @@ docker model pull ai/smollm2
 safe-code --local-model ai/smollm2
 ```
 
+## Unity CLI integration
+
+Runs the Unity CLI installed on your host machine from inside the container via a small local bridge — no need to install Unity in Docker:
+
+```powershell
+# On the host (Windows)
+node bridge\unity-bridge.mjs
+```
+
+Then set `UNITY_BRIDGE_TOKEN` in `.env` and call `unity build ...` from inside opencode. See [Unity integration](docs/unity.md).
+
 ## Documentation
 
 - [Installation](docs/installation.md) - Prerequisites, setup, and version pinning

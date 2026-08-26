@@ -76,6 +76,44 @@ docker volume rm opencode-config
 safe-code --build
 ```
 
+## Unity CLI: cannot connect to bridge
+
+1. Make sure the bridge is running on the host: `node bridge\unity-bridge.mjs`
+2. From inside the container, test connectivity:
+
+```bash
+unity bridge-health
+```
+
+3. On Docker Engine (Linux) the gateway IP may differ from `host.docker.internal`:
+
+```bash
+ip route | grep default   # e.g. 172.17.0.1
+safe-code --unity-url http://172.17.0.1:7777
+```
+
+## Unity CLI: HTTP 401 or "rejected"
+
+The token in `UNITY_BRIDGE_TOKEN` does not match the bridge's token. The bridge prints its token on startup and stores it at `~/.unity-bridge/token`. If you deleted the file, restart the bridge to generate a new one.
+
+## Unity CLI: "Directory not found on host"
+
+The bridge cannot resolve the container's working directory. Start it with a path map:
+
+```powershell
+node bridge\unity-bridge.mjs --path-map "/workspace=C:\src\MyGame"
+```
+
+## Unity CLI: "Failed to start '<command>'"
+
+`spawn` could not find the Unity CLI executable. Pass an explicit path:
+
+```powershell
+node bridge\unity-bridge.mjs --command "C:\path\to\unity.exe"
+```
+
+Note: on Windows a plain command name requires it to be in PATH and spawnable without a shell; `.cmd`/`.bat` wrappers must be invoked via their full path with `--command`.
+
 ## Out of memory
 
 Increase the memory limit in `docker-compose.yml` or pass `--memory` to `docker run`:
