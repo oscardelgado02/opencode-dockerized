@@ -45,7 +45,7 @@ System-wide:
 
 ```bash
 sudo mkdir -p /usr/local/share/safe-code
-sudo cp -r Dockerfile docker-compose.yml entrypoint.sh shims skills .env.safe .env.auto .env.balanced /usr/local/share/safe-code/
+sudo cp -r Dockerfile docker-compose.yml entrypoint.sh shims skills bridge .env.safe .env.auto .env.balanced /usr/local/share/safe-code/
 [ -f .env ] && sudo cp .env /usr/local/share/safe-code/
 sudo cp safe-code /usr/local/bin/
 sudo chmod +x /usr/local/bin/safe-code
@@ -57,7 +57,7 @@ Or for your user only:
 
 ```bash
 mkdir -p ~/.local/share/safe-code
-cp -r Dockerfile docker-compose.yml entrypoint.sh shims skills .env.safe .env.auto .env.balanced ~/.local/share/safe-code/
+cp -r Dockerfile docker-compose.yml entrypoint.sh shims skills bridge .env.safe .env.auto .env.balanced ~/.local/share/safe-code/
 [ -f .env ] && cp .env ~/.local/share/safe-code/
 mkdir -p ~/.local/bin
 cp safe-code ~/.local/bin/

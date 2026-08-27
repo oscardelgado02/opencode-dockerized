@@ -195,6 +195,23 @@ if [ "$BUILD_IMAGE" = true ] || ! docker image inspect safe-opencode >/dev/null 
     "${COMPOSE_CMD[@]}" build
 fi
 
+# Push this session's working dir to the bridge as /workspace's host path,
+# so Unity runs against exactly the project where safe-code was invoked.
+# Requires launching from WSL (wslpath); the bridge persists the last map.
+if [ -n "${UNITY_BRIDGE_URL:-}" ] && command -v wslpath >/dev/null 2>&1; then
+    WIN_WORKDIR="$(wslpath -w "$WORKDIR" 2>/dev/null || true)"
+    if [ -n "$WIN_WORKDIR" ] && command -v curl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+        MAP_CURL=(curl -sS --noproxy '*' --max-time 5 -X POST -H 'Content-Type: application/json')
+        [ -n "${UNITY_BRIDGE_TOKEN:-}" ] && MAP_CURL+=(-H "x-unity-token: $UNITY_BRIDGE_TOKEN")
+        if MAP_RESP=$(printf '{"path":"/workspace=%s"}' "$WIN_WORKDIR" | "${MAP_CURL[@]}" -d @- \
+                "${UNITY_BRIDGE_URL%/}/set-path-map" 2>/dev/null) && [[ "$MAP_RESP" == *'"ok":true'* ]]; then
+            echo "[safe-code] bridge path map applied: /workspace=$WIN_WORKDIR"
+        else
+            echo "[safe-code] warning: could not set Unity path map${MAP_RESP:+ — bridge replied: $MAP_RESP} (bridge running? updated copy with /set-path-map?)"
+        fi
+    fi
+fi
+
 RUN_ARGS=(--rm -v "$WORKDIR:/workspace:rw")
 
 if [ -n "${OPENCODE_MODEL:-}" ]; then

@@ -109,6 +109,14 @@ safe-code --unity-url http://172.17.0.1:7777
 
 The token in `UNITY_BRIDGE_TOKEN` does not match the bridge's token. The bridge prints its token on startup and stores it at `~/.unity-bridge/token`. If you deleted the file, restart the bridge to generate a new one.
 
+### "Directory not found on host: /workspace"
+
+The bridge has no path map for `/workspace`. When launching from WSL, `safe-code` pushes your working directory automatically (see docs/unity.md, "Automatic mapping"). Otherwise start the bridge with an explicit map:
+
+```powershell
+node bridge\unity-bridge.mjs --path-map "/workspace=C:\src\MyGame"
+```
+
 ## Unity CLI: "Directory not found on host"
 
 The bridge cannot resolve the container's working directory. Start it with a path map:

@@ -50,7 +50,28 @@ docker model rm ai/smollm2
 docker model rm ai/qwen2.5-coder
 ```
 
-## 6. Remove the repository
+## 6. Remove the Unity bridge (optional)
+
+Only applies when you used the [Unity CLI integration](unity.md).
+
+Stop the running bridge process (`Ctrl+C` in its window) and delete its runtime state:
+
+```bash
+# From WSL:
+rm -rf ~/.unity-bridge
+```
+
+```powershell
+# And/or from Windows, if you started it there at least once:
+del %USERPROFILE%\.unity-bridge\token
+rmdir %USERPROFILE%\.unity-bridge
+```
+
+`~/.unity-bridge` holds the auth token and the last persisted path map. The bridge script itself lives inside `$SAFE_CODE_HOME/bridge/` (removed in step 1) or your repo clone (removed in step 7).
+
+If you enabled mirrored networking just for the bridge, optionally revert by deleting the `[wsl2]` block you added to `%USERPROFILE%\.wslconfig` and running `wsl --shutdown`.
+
+## 7. Remove the repository
 
 ```bash
 cd ..

@@ -20,6 +20,11 @@
  *   --path-map <m>    Container->host path pairs "cpath=hpath;cpath2=hpath2" (env UNITY_PATH_MAP)
  *
  * A generated token is stored in ~/.unity-bridge/token when none is supplied.
+ *
+ * Runtime API:
+ *   GET  /health          status probe
+ *   POST /run             execute the Unity CLI
+ *   POST /set-path-map    update path mappings at runtime, body {"path":"c=h;c2=h2"}
  */
 
 import http from "node:http";
@@ -84,6 +89,25 @@ function mapPath(p, mappings) {
 
 function resolveTokenFile() {
   return path.join(os.homedir(), ".unity-bridge", "token");
+}
+
+function savedPathMapFile() {
+  return path.join(os.homedir(), ".unity-bridge", "path-map");
+}
+
+function loadSavedPathMap() {
+  try {
+    return fs.readFileSync(savedPathMapFile(), "utf8").trim();
+  } catch {
+    return "";
+  }
+}
+
+function savePathMap(mapStr) {
+  try {
+    fs.mkdirSync(path.dirname(savedPathMapFile()), { recursive: true });
+    fs.writeFileSync(savedPathMapFile(), mapStr + "\n");
+  } catch {}
 }
 
 function ensureToken(opts) {
@@ -251,7 +275,9 @@ function main() {
   }
 
   ensureToken(opts);
-  const pathMappings = parsePathMap(opts.pathMap || "");
+  // Precedence: CLI flag > last runtime map > env
+  opts.pathMap = opts.pathMap || loadSavedPathMap() || process.env.UNITY_PATH_MAP || "";
+  opts.pathMappings = parsePathMap(opts.pathMap || "");
   const allowedCmds =
     opts.allowCmds
       .split(",")
@@ -265,7 +291,7 @@ function main() {
       return send(res, 200, { status: "ok", command: opts.command, pid: process.pid });
     }
 
-    if (req.method !== "POST" || url.pathname !== "/run") {
+    if (req.method !== "POST" || !["/run", "/set-path-map"].includes(url.pathname)) {
       return send(res, 404, { error: "Not found" });
     }
 
@@ -278,6 +304,35 @@ function main() {
         console.log(`[bridge] 401 rejected request`);
         return send(res, 401, { error: "Invalid or missing x-unity-token header" });
       }
+    }
+
+    if (url.pathname === "/set-path-map") {
+      let mapBody = "";
+      req.on("data", (chunk) => {
+        mapBody += chunk;
+        if (mapBody.length > 64 * 1024) req.destroy();
+      });
+      req.on("end", () => {
+        let raw;
+        try {
+          raw = JSON.parse(mapBody || "{}").path;
+        } catch {
+          return send(res, 400, { error: "Invalid JSON" });
+        }
+        if (typeof raw !== "string") {
+          return send(res, 400, { error: 'Expected body {"path":"c=h;c2=h2"}' });
+        }
+        try {
+          opts.pathMappings = parsePathMap(raw);
+          opts.pathMap = raw;
+          savePathMap(raw);
+          console.log(`[bridge] path map set: ${raw}`);
+          return send(res, 200, { ok: true, pathMap: raw });
+        } catch (e) {
+          return send(res, 400, { error: e.message });
+        }
+      });
+      return;
     }
 
     let body = "";
@@ -303,7 +358,7 @@ function main() {
 
       const payloadMapped = {
         args: rawArgs.map((a) => String(a)),
-        cwd: mapPath(cwdRaw, pathMappings),
+        cwd: mapPath(cwdRaw, opts.pathMappings),
         timeoutMs: Number.isFinite(payload.timeoutMs) ? Math.min(Math.max(payload.timeoutMs, 1000), 24 * 60 * 60 * 1000) : 30 * 60 * 1000,
       };
 
@@ -319,7 +374,7 @@ function main() {
   server.listen(opts.port, "127.0.0.1", () => {
     console.log(`[bridge] Unity CLI bridge listening on http://127.0.0.1:${opts.port}`);
     console.log(`[bridge] Command: ${opts.command}`);
-    if (pathMappings.length) console.log(`[bridge] Path map: ${opts.pathMap}`);
+    if (opts.pathMappings.length) console.log(`[bridge] Path map: ${opts.pathMap}`);
     if (allowedCmds.length) console.log(`[bridge] Allowed commands: ${allowedCmds.join(", ")}`);
     console.log(`[bridge] Token: ${opts.noToken ? "DISABLED" : "(stored in ~/.unity-bridge/token)"}`);
   });

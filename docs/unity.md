@@ -26,10 +26,14 @@ The container gets a thin `unity` command that transparently forwards to your ho
 
 ### 1. Start the bridge on the host (one-time per session)
 
-Requires Node.js >= 18 (`winget install OpenJS.NodeJS.LTS`):
+Requires Node.js >= 18 (`winget install OpenJS.NodeJS.LTS`). The bridge ships inside the installation (`bridge/` is copied by the installer):
 
 ```powershell
-node bridge\unity-bridge.mjs
+# From a Windows shell, pointing at the installed copy:
+node \\wsl$\<DistroName>\usr\local\share\safe-code\bridge\unity-bridge.mjs
+
+# Or from WSL (under mirrored networking, loopback is shared with Windows):
+node ~/.local/share/safe-code/bridge/unity-bridge.mjs
 ```
 
 First run generates an auth token at `%USERPROFILE%\.unity-bridge\token` and prints it. Leave the window open.
@@ -50,7 +54,7 @@ node bridge\unity-bridge.mjs `
 | `--command` | Unity CLI executable (default `unity`, must be resolvable by `spawn`) |
 | `--token <t>` / `--no-token` | Auth token (auto-generated when omitted) |
 | `--allow-cmds <list>` | Whitelist of allowed first arguments |
-| `--path-map <pairs>` | Translate container paths, `/container=path\host;/c2=h2` |
+| `--path-map <pairs>` | Translate container paths, `/container=path\host;/c2=h2` (see [Automatic mapping](#path-mapping)) |
 
 ### 2. Configure the container
 
@@ -111,6 +115,16 @@ node bridge\unity-bridge.mjs --path-map "/workspace=C:\src\MyGame"
 ```
 
 Now `cd /workspace && unity build ...` runs with `C:\src\MyGame` as cwd on the host.
+
+### Automatic mapping per session
+
+Launching `safe-code` from **WSL** pushes its working directory to the bridge automatically (`safe-code` resolves it with `wslpath -w`), so no fixed `--path-map` is needed:
+
+```
+cd /mnt/c/src/MyGame && safe-code      # bridge map becomes /workspace=C:\src\MyGame
+```
+
+This uses the bridge's token-guarded `POST /set-path-map` endpoint; the last map is persisted to `~/.unity-bridge/path-map` and reloaded when you restart the bridge without flags. Precedence for a static default: CLI flag > persisted runtime map > `UNITY_PATH_MAP`.
 
 ## Security notes
 

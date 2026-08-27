@@ -1,5 +1,6 @@
 services:
   opencode:
+    network_mode: host
     build:
       context: .
       args:

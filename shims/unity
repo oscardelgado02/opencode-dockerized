@@ -19,42 +19,60 @@ if [ "${1:-}" = "bridge-health" ]; then
     exit 0
 fi
 
-PAYLOAD=$(jq -nc \
-    --arg cwd "$PWD" \
-    --argjson timeoutMs "$BRIDGE_TIMEOUT_MS" \
-    '{args: $ARGS.positional, cwd: $cwd, timeoutMs: $timeoutMs}' \
-    --args -- "$@") || die "failed to build request payload"
-
-CURL_ARGS=(-X POST --max-time $((BRIDGE_TIMEOUT_MS / 1000 + 120))
-    -H 'Content-Type: application/json'
-    --data-binary "$PAYLOAD"
-    -w '\n%{http_code}')
-[ -n "${UNITY_BRIDGE_TOKEN:-}" ] && CURL_ARGS+=(-H "x-unity-token: $UNITY_BRIDGE_TOKEN")
-
-RESPONSE=$(curl -sS --noproxy '*' "${CURL_ARGS[@]}" "${BRIDGE_URL%/}/run")
-RC=$?
-
-case "$RC" in
-    0) ;;
-    7)
-        die "cannot connect to bridge at $BRIDGE_URL.
-Start it on the host with: node unity-bridge.mjs" ;;
-    22)
-        die "bridge rejected the request (HTTP error). Check UNITY_BRIDGE_TOKEN." ;;
-    28)
-        die "timed out waiting for the bridge ($((BRIDGE_TIMEOUT_MS / 1000))s).
-Raise it with UNITY_TIMEOUT_MS for long builds." ;;
-    *)
-        die "curl failed with exit code $RC" ;;
-esac
-
-HTTP_CODE=$(printf '%s' "$RESPONSE" | tail -n1)
-BODY=$(printf '%s' "$RESPONSE" | sed '$d')
-
-[ "$HTTP_CODE" = "200" ] || {
-    printf 'unity-shim: bridge returned HTTP %s\n%s\n' "$HTTP_CODE" "$BODY" >&2
-    exit 1
+run_remote() {
+    # $1 = cwd to send; empty string means "no cwd" (bridge uses its own dir)
+    jq -nc --arg cwd "$1" --argjson timeoutMs "$BRIDGE_TIMEOUT_MS" \
+        '{args: $ARGS.positional, cwd: $cwd, timeoutMs: $timeoutMs}' \
+        --args -- "$@" |
+      curl -sS --noproxy '*' -X POST \
+        --max-time $((BRIDGE_TIMEOUT_MS / 1000 + 120)) \
+        -H 'Content-Type: application/json' \
+        ${UNITY_BRIDGE_TOKEN:+-H "x-unity-token: $UNITY_BRIDGE_TOKEN"} \
+        -d @- -w '\n%{http_code}' "${BRIDGE_URL%/}/run"
 }
+
+UNITY_ARGS=("$@")
+
+invoke() {
+    # $1 = cwd to send; empty string = none (bridge runs in its own directory)
+    jq -nc --arg cwd "$1" --argjson timeoutMs "$BRIDGE_TIMEOUT_MS" \
+        '{args: $ARGS.positional, cwd: $cwd, timeoutMs: $timeoutMs}' \
+        --args -- "${UNITY_ARGS[@]}" |
+    curl -sS --noproxy '*' -X POST \
+        --max-time $((BRIDGE_TIMEOUT_MS / 1000 + 120)) \
+        -H 'Content-Type: application/json' \
+        ${UNITY_BRIDGE_TOKEN:+-H "x-unity-token: $UNITY_BRIDGE_TOKEN"} \
+        -d @- -w '\n%{http_code}' "${BRIDGE_URL%/}/run"
+}
+
+# returns 0 and sets HTTP_CODE/BODY on success; dies otherwise
+fetch() {
+    local RESP RC
+    RESP=$(invoke "$1") || RC=$?
+    case "${RC:-0}" in
+        0) ;;
+        7) die "cannot connect to bridge at $BRIDGE_URL.
+Start it on the host with: node unity-bridge.mjs" ;;
+        22) die "bridge rejected the request (HTTP error). Check UNITY_BRIDGE_TOKEN." ;;
+        28) die "timed out waiting for the bridge ($((BRIDGE_TIMEOUT_MS / 1000))s).
+Raise it with UNITY_TIMEOUT_MS for long builds." ;;
+        *) die "curl failed with exit code ${RC}" ;;
+    esac
+    HTTP_CODE=$(printf '%s' "$RESP" | tail -n1)
+    BODY=$(printf '%s' "$RESP" | sed '$d')
+    [ "$HTTP_CODE" = "200" ] || {
+        printf 'unity-shim: bridge returned HTTP %s\n%s\n' "$HTTP_CODE" "$BODY" >&2
+        exit 1
+    }
+}
+
+fetch "$PWD"
+
+# Commands like `unity --version` need no project. When the bridge reports an
+# unmapped/unexisting cwd, retry once without one instead of failing.
+if printf '%s' "$BODY" | jq -r '.stderr // ""' | head -1 | grep -q '^Directory not found'; then
+    fetch ""
+fi
 
 CODE=$(printf '%s' "$BODY" | jq -r '.code // empty')
 SIGNAL=$(printf '%s' "$BODY" | jq -r '.signal // empty')
@@ -69,12 +87,15 @@ if [ "$TIMED_OUT" = "true" ]; then
     exit 124
 fi
 
+if [ -n "$SIGNAL" ]; then
+    printf 'unity-shim: remote command killed by signal %s\n' "$SIGNAL" >&2
+    exit 128
+fi
+
 if [ -z "$CODE" ]; then
-    if [ -n "$SIGNAL" ]; then
-        printf 'unity-shim: remote command killed by signal %s\n' "$SIGNAL" >&2
-        exit 128
-    fi
-    die "malformed bridge response"
+    # Early rejections (e.g. unmapped cwd): the reason was already printed by
+    # the stream dump above; exit nonzero without repeating it.
+    exit 1
 fi
 
 exit "$CODE"
