@@ -126,6 +126,10 @@ cd /mnt/c/src/MyGame && safe-code      # bridge map becomes /workspace=C:\src\My
 
 This uses the bridge's token-guarded `POST /set-path-map` endpoint; the last map is persisted to `~/.unity-bridge/path-map` and reloaded when you restart the bridge without flags. Precedence for a static default: CLI flag > persisted runtime map > `UNITY_PATH_MAP`.
 
+### Concurrent sessions
+
+Every `safe-code` launch generates a session id (`UNITY_SESSION`) and registers its mapping under it, so **several opencode terminals in different projects share one bridge without interfering** — `unity` calls inside a session always resolve to that session's project, regardless of what other sessions do. Session maps are kept in memory (a bridge restart clears them; each launch re-registers). Calls without a session id, e.g. manual API use, keep using the global default map.
+
 ## Security notes
 
 - The bridge binds to `127.0.0.1` only; nothing outside your machine can reach it.

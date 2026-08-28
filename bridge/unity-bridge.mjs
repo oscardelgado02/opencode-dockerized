@@ -278,6 +278,9 @@ function main() {
   // Precedence: CLI flag > last runtime map > env
   opts.pathMap = opts.pathMap || loadSavedPathMap() || process.env.UNITY_PATH_MAP || "";
   opts.pathMappings = parsePathMap(opts.pathMap || "");
+  // Per-session overrides (from safe-code) live in memory only; sessions
+  // re-push at every launch and stale entries die with the bridge process.
+  opts.sessionMaps = {};
   const allowedCmds =
     opts.allowCmds
       .split(",")
@@ -313,21 +316,30 @@ function main() {
         if (mapBody.length > 64 * 1024) req.destroy();
       });
       req.on("end", () => {
-        let raw;
+        let body;
         try {
-          raw = JSON.parse(mapBody || "{}").path;
+          body = JSON.parse(mapBody || "{}");
         } catch {
           return send(res, 400, { error: "Invalid JSON" });
         }
-        if (typeof raw !== "string") {
-          return send(res, 400, { error: 'Expected body {"path":"c=h;c2=h2"}' });
+        const raw = typeof body.path === "string" ? body.path : null;
+        const session = typeof body.session === "string" ? body.session : "";
+        if (raw === null) {
+          return send(res, 400, { error: 'Expected body {"path":"c=h;c2=h2","session":"s123456"}' });
+        }
+        if (session && !/^[A-Za-z0-9_-]{1,64}$/.test(session)) {
+          return send(res, 400, { error: "Invalid session id" });
         }
         try {
-          opts.pathMappings = parsePathMap(raw);
-          opts.pathMap = raw;
-          savePathMap(raw);
-          console.log(`[bridge] path map set: ${raw}`);
-          return send(res, 200, { ok: true, pathMap: raw });
+          if (session) {
+            opts.sessionMaps[session] = parsePathMap(raw);
+          } else {
+            opts.pathMappings = parsePathMap(raw);
+            opts.pathMap = raw;
+            savePathMap(raw);
+          }
+          console.log(`[bridge] path map set${session ? ` (session ${session})` : ""}: ${raw}`);
+          return send(res, 200, { ok: true, pathMap: raw, session: session || undefined });
         } catch (e) {
           return send(res, 400, { error: e.message });
         }
@@ -350,6 +362,11 @@ function main() {
 
       const rawArgs = Array.isArray(payload.args) ? payload.args : [];
       const cwdRaw = typeof payload.cwd === "string" ? payload.cwd : "";
+      const session =
+        typeof payload.session === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(payload.session)
+          ? payload.session
+          : "";
+      const mappings = (session && opts.sessionMaps[session]) || opts.pathMappings;
 
       if (allowedCmds.length > 0 && rawArgs.length > 0 && !allowedCmds.includes(rawArgs[0])) {
         console.log(`[bridge] 403 denied command: ${rawArgs[0]}`);
@@ -358,12 +375,12 @@ function main() {
 
       const payloadMapped = {
         args: rawArgs.map((a) => String(a)),
-        cwd: mapPath(cwdRaw, opts.pathMappings),
+        cwd: mapPath(cwdRaw, mappings),
         timeoutMs: Number.isFinite(payload.timeoutMs) ? Math.min(Math.max(payload.timeoutMs, 1000), 24 * 60 * 60 * 1000) : 30 * 60 * 1000,
       };
 
       console.log(
-        `[bridge] run: ${(payloadMapped.args.join(" ") || "").slice(0, 200)}${payloadMapped.cwd ? ` (cwd=${payloadMapped.cwd})` : ""}`
+        `[bridge] run${session ? ` [${session}]` : ""}: ${(payloadMapped.args.join(" ") || "").slice(0, 200)}${payloadMapped.cwd ? ` (cwd=${payloadMapped.cwd})` : ""}`
       );
       const result = await runUnity(payloadMapped, opts);
       console.log(`[bridge] done: code=${result.code ?? result.signal} in ${(result.durationMs / 1000).toFixed(1)}s`);

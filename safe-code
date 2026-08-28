@@ -197,15 +197,23 @@ fi
 
 # Push this session's working dir to the bridge as /workspace's host path,
 # so Unity runs against exactly the project where safe-code was invoked.
-# Requires launching from WSL (wslpath); the bridge persists the last map.
+# A per-session id keeps concurrent projects isolated on one shared bridge.
+# Requires launching from WSL (wslpath); the bridge persists the default map.
 if [ -n "${UNITY_BRIDGE_URL:-}" ] && command -v wslpath >/dev/null 2>&1; then
     WIN_WORKDIR="$(wslpath -w "$WORKDIR" 2>/dev/null || true)"
     if [ -n "$WIN_WORKDIR" ] && command -v curl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+        # 36^8 ≈ 2.8e12 ids from the kernel CSPRNG; if urandom ever fails,
+        # fall back to "" (legacy global-map mode) instead of a shared id.
+        UNITY_SESSION="s$(tr -dc a-z0-9 < /dev/urandom | head -c 8)"
+        [ ${#UNITY_SESSION} -ge 9 ] || UNITY_SESSION=""
+        export UNITY_SESSION
         MAP_CURL=(curl -sS --noproxy '*' --max-time 5 -X POST -H 'Content-Type: application/json')
         [ -n "${UNITY_BRIDGE_TOKEN:-}" ] && MAP_CURL+=(-H "x-unity-token: $UNITY_BRIDGE_TOKEN")
-        if MAP_RESP=$(printf '{"path":"/workspace=%s"}' "$WIN_WORKDIR" | "${MAP_CURL[@]}" -d @- \
+        MAP_BODY=$(jq -nc --arg path "/workspace=$WIN_WORKDIR" --arg sess "$UNITY_SESSION" \
+            '{path: $path} + (if $sess == "" then {} else {session: $sess} end)')
+        if MAP_RESP=$(printf '%s' "$MAP_BODY" | "${MAP_CURL[@]}" -d @- \
                 "${UNITY_BRIDGE_URL%/}/set-path-map" 2>/dev/null) && [[ "$MAP_RESP" == *'"ok":true'* ]]; then
-            echo "[safe-code] bridge path map applied: /workspace=$WIN_WORKDIR"
+            echo "[safe-code] bridge path map applied: /workspace=$WIN_WORKDIR (session ${UNITY_SESSION:-legacy})"
         else
             echo "[safe-code] warning: could not set Unity path map${MAP_RESP:+ — bridge replied: $MAP_RESP} (bridge running? updated copy with /set-path-map?)"
         fi
@@ -213,6 +221,7 @@ if [ -n "${UNITY_BRIDGE_URL:-}" ] && command -v wslpath >/dev/null 2>&1; then
 fi
 
 RUN_ARGS=(--rm -v "$WORKDIR:/workspace:rw")
+[ -n "${UNITY_SESSION:-}" ] && RUN_ARGS+=(-e UNITY_SESSION="$UNITY_SESSION")
 
 if [ -n "${OPENCODE_MODEL:-}" ]; then
     RUN_ARGS+=(-e OPENCODE_MODEL="$OPENCODE_MODEL")

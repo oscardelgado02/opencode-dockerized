@@ -35,8 +35,9 @@ UNITY_ARGS=("$@")
 
 invoke() {
     # $1 = cwd to send; empty string = none (bridge runs in its own directory)
-    jq -nc --arg cwd "$1" --argjson timeoutMs "$BRIDGE_TIMEOUT_MS" \
-        '{args: $ARGS.positional, cwd: $cwd, timeoutMs: $timeoutMs}' \
+    jq -nc --arg cwd "$1" --arg sess "${UNITY_SESSION:-}" --argjson timeoutMs "$BRIDGE_TIMEOUT_MS" \
+        '{args: $ARGS.positional, cwd: $cwd, timeoutMs: $timeoutMs}
+         + (if $sess == "" then {} else {session: $sess} end)' \
         --args -- "${UNITY_ARGS[@]}" |
     curl -sS --noproxy '*' -X POST \
         --max-time $((BRIDGE_TIMEOUT_MS / 1000 + 120)) \
