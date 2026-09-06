@@ -88,8 +88,8 @@ By default, the latest versions of Node.js, pnpm, and opencode-ai are used. To p
 
 ```
 NODE_VERSION=alpine
-PNPM_VERSION=8.15.4
-OPENCODE_VERSION=0.0.0-alpha.56
+PNPM_VERSION=10.17.0
+OPENCODE_VERSION=1.18.29
 ```
 
 Then rebuild:

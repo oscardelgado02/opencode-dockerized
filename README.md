@@ -27,7 +27,7 @@ safe-code
 
 - Non-root user
 - Configurable permission model (ask/allow/deny per operation)
-- pnpm installation with integrity checksums
+- pnpm-based installs with registry integrity checksums
 - Persistent config and auth volumes (provider credentials survive restarts)
 
 ## Presets

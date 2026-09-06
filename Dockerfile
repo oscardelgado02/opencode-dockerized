@@ -11,10 +11,7 @@ RUN if [ "$PNPM_VERSION" = "latest" ]; then \
       npm install -g pnpm@${PNPM_VERSION}; \
     fi
 
-ENV SHELL=bash
-
-RUN pnpm setup
-
+ENV PNPM_HOME=/root/.local/share/pnpm
 ENV PATH="/root/.local/share/pnpm/bin:$PATH"
 
 RUN if [ "$OPENCODE_VERSION" = "latest" ]; then \
@@ -35,6 +32,7 @@ RUN apk add --no-cache bash libstdc++ libgcc jq
 COPY --from=installer /usr/local/bin/node /usr/local/bin/node
 COPY --from=installer /usr/local/lib/node_modules /usr/local/lib/node_modules
 COPY --from=installer /root/.local/share/pnpm/ /usr/local/
+COPY --from=installer /usr/local/bin/pn* /usr/local/bin/
 
 RUN addgroup -g $GID coder 2>/dev/null; \
     GROUP_NAME=$(getent group $GID | cut -d: -f1); \
