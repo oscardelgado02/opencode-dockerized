@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# Forward Unity CLI commands to the host machine through the unity bridge.
+# Requires UNITY_BRIDGE_URL (default: http://host.docker.internal:7777)
+# and UNITY_BRIDGE_TOKEN when token auth is enabled on the bridge.
+set -uo pipefail
+
+BRIDGE_URL="${UNITY_BRIDGE_URL:-http://host.docker.internal:7777}"
+BRIDGE_TIMEOUT_MS="${UNITY_TIMEOUT_MS:-1800000}"
+
+die() {
+    printf 'unity-shim: %s\n' "$*" >&2
+    exit 1
+}
+
+if [ "${1:-}" = "bridge-health" ]; then
+    curl -sS --noproxy '*' --max-time 10 "${BRIDGE_URL%/}/health" \
+        || die "cannot reach the bridge at $BRIDGE_URL"
+    printf '\nBridge reachable.\n'
+    exit 0
+fi
+
+run_remote() {
+    # $1 = cwd to send; empty string means "no cwd" (bridge uses its own dir)
+    jq -nc --arg cwd "$1" --argjson timeoutMs "$BRIDGE_TIMEOUT_MS" \
+        '{args: $ARGS.positional, cwd: $cwd, timeoutMs: $timeoutMs}' \
+        --args -- "$@" |
+      curl -sS --noproxy '*' -X POST \
+        --max-time $((BRIDGE_TIMEOUT_MS / 1000 + 120)) \
+        -H 'Content-Type: application/json' \
+        ${UNITY_BRIDGE_TOKEN:+-H "x-unity-token: $UNITY_BRIDGE_TOKEN"} \
+        -d @- -w '\n%{http_code}' "${BRIDGE_URL%/}/run"
+}
+
+UNITY_ARGS=("$@")
+
+invoke() {
+    # $1 = cwd to send; empty string = none (bridge runs in its own directory)
+    jq -nc --arg cwd "$1" --arg sess "${UNITY_SESSION:-}" --argjson timeoutMs "$BRIDGE_TIMEOUT_MS" \
+        '{args: $ARGS.positional, cwd: $cwd, timeoutMs: $timeoutMs}
+         + (if $sess == "" then {} else {session: $sess} end)' \
+        --args -- "${UNITY_ARGS[@]}" |
+    curl -sS --noproxy '*' -X POST \
+        --max-time $((BRIDGE_TIMEOUT_MS / 1000 + 120)) \
+        -H 'Content-Type: application/json' \
+        ${UNITY_BRIDGE_TOKEN:+-H "x-unity-token: $UNITY_BRIDGE_TOKEN"} \
+        -d @- -w '\n%{http_code}' "${BRIDGE_URL%/}/run"
+}
+
+# returns 0 and sets HTTP_CODE/BODY on success; dies otherwise
+fetch() {
+    local RESP RC
+    RESP=$(invoke "$1") || RC=$?
+    case "${RC:-0}" in
+        0) ;;
+        7) die "cannot connect to bridge at $BRIDGE_URL.
+Start it on the host with: node unity-bridge.mjs" ;;
+        22) die "bridge rejected the request (HTTP error). Check UNITY_BRIDGE_TOKEN." ;;
+        28) die "timed out waiting for the bridge ($((BRIDGE_TIMEOUT_MS / 1000))s).
+Raise it with UNITY_TIMEOUT_MS for long builds." ;;
+        *) die "curl failed with exit code ${RC}" ;;
+    esac
+    HTTP_CODE=$(printf '%s' "$RESP" | tail -n1)
+    BODY=$(printf '%s' "$RESP" | sed '$d')
+    [ "$HTTP_CODE" = "200" ] || {
+        printf 'unity-shim: bridge returned HTTP %s\n%s\n' "$HTTP_CODE" "$BODY" >&2
+        exit 1
+    }
+}
+
+fetch "$PWD"
+
+# Commands like `unity --version` need no project. When the bridge reports an
+# unmapped/unexisting cwd, retry once without one instead of failing.
+if printf '%s' "$BODY" | jq -r '.stderr // ""' | head -1 | grep -q '^Directory not found'; then
+    fetch ""
+fi
+
+CODE=$(printf '%s' "$BODY" | jq -r '.code // empty')
+SIGNAL=$(printf '%s' "$BODY" | jq -r '.signal // empty')
+TIMED_OUT=$(printf '%s' "$BODY" | jq -r '.timedOut // false')
+
+# -j = raw output, no added newline: preserves the host process byte stream
+printf '%s' "$BODY" | jq -j '.stdout'
+printf '%s' "$BODY" | jq -j '.stderr' >&2
+
+if [ "$TIMED_OUT" = "true" ]; then
+    printf 'unity-shim: remote command timed out\n' >&2
+    exit 124
+fi
+
+if [ -n "$SIGNAL" ]; then
+    printf 'unity-shim: remote command killed by signal %s\n' "$SIGNAL" >&2
+    exit 128
+fi
+
+if [ -z "$CODE" ]; then
+    # Early rejections (e.g. unmapped cwd): the reason was already printed by
+    # the stream dump above; exit nonzero without repeating it.
+    exit 1
+fi
+
+exit "$CODE"

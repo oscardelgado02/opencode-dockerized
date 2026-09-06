@@ -1,11 +1,26 @@
 #!/bin/bash
 set -e
 
-CONFIG_DIR="/home/coder/.config/opencode"
+HOME_DIR="${HOME:-/home/coder}"
+CONFIG_DIR="$HOME_DIR/.config/opencode"
 CONFIG_FILE="$CONFIG_DIR/opencode.json"
-AUTH_DIR="/home/coder/.local/share/opencode"
+AUTH_DIR="$HOME_DIR/.local/share/opencode"
 
 mkdir -p "$CONFIG_DIR" "$AUTH_DIR"
+
+# Sync skills shipped in the image into the (persistent) config volume.
+# Re-copied on every start so image updates always win over volume copies.
+SKILLS_SRC="${OPENCODE_SKILLS_SRC:-/usr/local/share/opencode-skills}"
+SKILL_NAME="unity-cli"
+if [ -d "$SKILLS_SRC/$SKILL_NAME" ]; then
+  rm -rf "$CONFIG_DIR/skills/$SKILL_NAME"
+  mkdir -p "$CONFIG_DIR/skills"
+  cp -R "$SKILLS_SRC/$SKILL_NAME" "$CONFIG_DIR/skills/$SKILL_NAME"
+  echo "[entrypoint] Installed $SKILL_NAME skill -> $CONFIG_DIR/skills/"
+elif [ -d "$CONFIG_DIR/skills/$SKILL_NAME" ]; then
+  rm -rf "$CONFIG_DIR/skills/$SKILL_NAME"
+  echo "[entrypoint] Removed stale $SKILL_NAME skill (image built with WITH_UNITY=0)"
+fi
 
 PERMISSION_JSON=$(cat <<EOF
 {

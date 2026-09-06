@@ -69,12 +69,71 @@ Then manually run `opencode` to see error messages.
 
 ## Config file not updating
 
-The entrypoint only generates `opencode.json` if it doesn't already exist. To regenerate:
+The entrypoint only generates `opencode.json` if it doesn't already exist. Reset everything instead:
 
 ```bash
-docker volume rm opencode-config
-safe-code --build
+safe-code --reset
 ```
+
+Or just remove the config volume: `docker volume rm safe-opencode_opencode-config && safe-code --build`.
+
+## unity-cli skill not showing in opencode
+
+1. Confirm the image was built with Unity: `docker run --rm --entrypoint sh safe-opencode -c 'ls /usr/local/share/opencode-skills'`
+2. Check it landed in the volume: `ls ~/.config/opencode/skills/unity-cli` inside the container
+3. A `--no-unity` build (the default) removes the skill on next container start, but only if you actually rebuild (`safe-code --no-unity` forces one)
+
+## Start completely fresh
+
+```bash
+safe-code --reset   # = docker compose down -v + rebuild + run
+```
+
+## Unity CLI: cannot connect to bridge
+
+1. Make sure the bridge is running on the host: `node bridge\unity-bridge.mjs`
+2. From inside the container, test connectivity:
+
+```bash
+unity bridge-health
+```
+
+3. On Docker Engine (Linux) the gateway IP may differ from `host.docker.internal`:
+
+```bash
+ip route | grep default   # e.g. 172.17.0.1
+safe-code --unity-url http://172.17.0.1:7777
+```
+
+## Unity CLI: HTTP 401 or "rejected"
+
+The token in `UNITY_BRIDGE_TOKEN` does not match the bridge's token. The bridge prints its token on startup and stores it at `~/.unity-bridge/token`. If you deleted the file, restart the bridge to generate a new one.
+
+### "Directory not found on host: /workspace"
+
+The bridge has no path map for `/workspace`. When launching from WSL, `safe-code` pushes your working directory automatically (see docs/unity.md, "Automatic mapping"). Otherwise start the bridge with an explicit map:
+
+```powershell
+node bridge\unity-bridge.mjs --path-map "/workspace=C:\src\MyGame"
+```
+
+## Unity CLI: "Directory not found on host"
+
+The bridge cannot resolve the container's working directory. Start it with a path map:
+
+```powershell
+node bridge\unity-bridge.mjs --path-map "/workspace=C:\src\MyGame"
+```
+
+## Unity CLI: "Failed to start '<command>'"
+
+`spawn` could not find the Unity CLI executable. Pass an explicit path:
+
+```powershell
+node bridge\unity-bridge.mjs --command "C:\path\to\unity.exe"
+```
+
+Note: on Windows a plain command name requires it to be in PATH and spawnable without a shell; `.cmd`/`.bat` wrappers must be invoked via their full path with `--command`.
 
 ## Out of memory
 

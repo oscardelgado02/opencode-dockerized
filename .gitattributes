@@ -1,0 +1,7 @@
+# Keep shell scripts LF — CRLF breaks shebangs inside the Linux container
+entrypoint.sh text eol=lf
+safe-code text eol=lf
+shims/unity text eol=lf
+bridge/unity-bridge.mjs text eol=lf
+Dockerfile text eol=lf
+*.sh text eol=lf

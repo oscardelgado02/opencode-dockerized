@@ -11,7 +11,7 @@ cp .env.safe .env
 # Edit .env with your API keys
 
 sudo mkdir -p /usr/local/share/safe-code
-sudo cp Dockerfile docker-compose.yml entrypoint.sh .env.safe .env.auto .env.balanced /usr/local/share/safe-code/
+sudo cp -r Dockerfile docker-compose.yml entrypoint.sh shims skills bridge .env.safe .env.auto .env.balanced /usr/local/share/safe-code/
 [ -f .env ] && sudo cp .env /usr/local/share/safe-code/
 sudo cp safe-code /usr/local/bin/
 sudo chmod +x /usr/local/bin/safe-code
@@ -20,6 +20,8 @@ source ~/.bashrc
 
 safe-code
 ```
+
+> The `bridge/` folder ships with the installation, so an up-to-date Unity bridge always lives at `$SAFE_CODE_HOME/bridge/unity-bridge.mjs`.
 
 ## Security features
 
@@ -52,6 +54,25 @@ Uses [Docker Model Runner](https://docs.docker.com/ai/model-runner/) for local i
 ```bash
 docker model pull ai/smollm2
 safe-code --local-model ai/smollm2
+```
+
+## Unity CLI integration
+
+Runs the Unity CLI installed on your host machine from inside the container via a small local bridge — no need to install Unity in Docker:
+
+```powershell
+# On the host (Windows)
+node bridge\unity-bridge.mjs
+```
+
+Then set `UNITY_BRIDGE_TOKEN` in `.env` and call `unity build ...` from inside opencode. See [Unity integration](docs/unity.md).
+
+The image can also ship a `unity-cli` agent skill (installed into opencode's config on start) so the AI knows how to use the bridge — timeouts, error playbook, path mapping. It is **not** included by default; opt in with `--unity`, or `WITH_UNITY=1` in `.env`.
+
+Reset to a clean slate (erases config/auth/cache volumes and rebuilds):
+
+```bash
+safe-code --reset
 ```
 
 ## Documentation

@@ -12,6 +12,8 @@ DMR_URL="http://model-runner.docker.internal:12434"
 USE_LOCAL_MODEL=false
 BUILD_IMAGE=false
 SHOW_HELP=false
+RESET_CONFIG=false
+WITH_UNITY=""
 WORKDIR="$(pwd)"
 
 show_help() {
@@ -30,8 +32,13 @@ OPTIONS:
     --model <model>     Use a specific cloud model (e.g., "anthropic/claude-3-opus")
     --local-model <m>   Use a local model via Docker Model Runner (e.g., "ai/smollm2", "ai/qwen2.5-coder")
     --dmr-url <url>     Docker Model Runner URL (default: http://model-runner.docker.internal:12434)
+    --unity-url <url>   Unity bridge URL (default: http://host.docker.internal:7777)
+    --unity-token <t>   Unity bridge auth token (or set UNITY_BRIDGE_TOKEN)
     --workdir <dir>     Working directory to mount (default: current directory)
     --build             Rebuild the Docker image before running
+    --unity             Rebuild the image with the Unity bridge command + skill (opt-in)
+    --no-unity          Build without the Unity command and remove the skill (default)
+    --reset             Erase everything: delete volumes (config/auth/cache), rebuild, start fresh
     --help              Show this help message
 
 EXAMPLES:
@@ -41,6 +48,9 @@ EXAMPLES:
     safe-code --env-file .env.custom       # Use a custom env file
     safe-code --model anthropic/claude-3-opus
     safe-code --local-model ai/smollm2     # Use local model via Docker Model Runner
+    safe-code --unity                      # Rebuild including Unity bridge command + skill
+    safe-code --no-unity                   # Build without Unity, remove its skill (default)
+    safe-code --reset                      # Wipe volumes + rebuild + start clean
     safe-code --build                      # Rebuild and run
 
 ENVIRONMENT VARIABLES:
@@ -53,6 +63,7 @@ ENVIRONMENT VARIABLES:
     OPENCODE_PERMISSION_WEBFETCH, OPENCODE_PERMISSION_WEBSEARCH,
     OPENCODE_PERMISSION_TASK, OPENCODE_PERMISSION_EXTERNAL_DIRECTORY,
     OPENCODE_MODEL, OPENCODE_LOCAL_MODEL_URL
+    UNITY_BRIDGE_URL, UNITY_BRIDGE_TOKEN, UNITY_TIMEOUT_MS, WITH_UNITY
 
 EOF
 }
@@ -92,8 +103,28 @@ while [[ $# -gt 0 ]]; do
             WORKDIR="$2"
             shift 2
             ;;
+        --unity-url)
+            UNITY_BRIDGE_URL="$2"
+            shift 2
+            ;;
+        --unity-token)
+            UNITY_BRIDGE_TOKEN="$2"
+            shift 2
+            ;;
         --build)
             BUILD_IMAGE=true
+            shift
+            ;;
+        --unity)
+            WITH_UNITY="1"
+            shift
+            ;;
+        --no-unity)
+            WITH_UNITY="0"
+            shift
+            ;;
+        --reset)
+            RESET_CONFIG=true
             shift
             ;;
         --help)
@@ -143,10 +174,20 @@ if [ "$USE_LOCAL_MODEL" = true ]; then
     export OPENCODE_LOCAL_MODEL_URL="$DMR_URL"
 fi
 
+if [ -n "$WITH_UNITY" ]; then
+    export WITH_UNITY
+fi
+
 COMPOSE_CMD=(docker compose -f "$COMPOSE_FILE")
 
 if [ -n "$ENV_FILE" ]; then
     COMPOSE_CMD+=(--env-file "$ENV_FILE")
+fi
+
+if [ "$RESET_CONFIG" = true ]; then
+    echo "Resetting: removing containers and all volumes (config/auth/cache will be erased)..."
+    "${COMPOSE_CMD[@]}" down -v --remove-orphans
+    BUILD_IMAGE=true
 fi
 
 if [ "$BUILD_IMAGE" = true ] || ! docker image inspect safe-opencode >/dev/null 2>&1; then
@@ -154,7 +195,33 @@ if [ "$BUILD_IMAGE" = true ] || ! docker image inspect safe-opencode >/dev/null 
     "${COMPOSE_CMD[@]}" build
 fi
 
+# Push this session's working dir to the bridge as /workspace's host path,
+# so Unity runs against exactly the project where safe-code was invoked.
+# A per-session id keeps concurrent projects isolated on one shared bridge.
+# Requires launching from WSL (wslpath); the bridge persists the default map.
+if [ -n "${UNITY_BRIDGE_URL:-}" ] && command -v wslpath >/dev/null 2>&1; then
+    WIN_WORKDIR="$(wslpath -w "$WORKDIR" 2>/dev/null || true)"
+    if [ -n "$WIN_WORKDIR" ] && command -v curl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+        # 36^8 ≈ 2.8e12 ids from the kernel CSPRNG; if urandom ever fails,
+        # fall back to "" (legacy global-map mode) instead of a shared id.
+        UNITY_SESSION="s$(tr -dc a-z0-9 < /dev/urandom | head -c 8)"
+        [ ${#UNITY_SESSION} -ge 9 ] || UNITY_SESSION=""
+        export UNITY_SESSION
+        MAP_CURL=(curl -sS --noproxy '*' --max-time 5 -X POST -H 'Content-Type: application/json')
+        [ -n "${UNITY_BRIDGE_TOKEN:-}" ] && MAP_CURL+=(-H "x-unity-token: $UNITY_BRIDGE_TOKEN")
+        MAP_BODY=$(jq -nc --arg path "/workspace=$WIN_WORKDIR" --arg sess "$UNITY_SESSION" \
+            '{path: $path} + (if $sess == "" then {} else {session: $sess} end)')
+        if MAP_RESP=$(printf '%s' "$MAP_BODY" | "${MAP_CURL[@]}" -d @- \
+                "${UNITY_BRIDGE_URL%/}/set-path-map" 2>/dev/null) && [[ "$MAP_RESP" == *'"ok":true'* ]]; then
+            echo "[safe-code] bridge path map applied: /workspace=$WIN_WORKDIR (session ${UNITY_SESSION:-legacy})"
+        else
+            echo "[safe-code] warning: could not set Unity path map${MAP_RESP:+ — bridge replied: $MAP_RESP} (bridge running? updated copy with /set-path-map?)"
+        fi
+    fi
+fi
+
 RUN_ARGS=(--rm -v "$WORKDIR:/workspace:rw")
+[ -n "${UNITY_SESSION:-}" ] && RUN_ARGS+=(-e UNITY_SESSION="$UNITY_SESSION")
 
 if [ -n "${OPENCODE_MODEL:-}" ]; then
     RUN_ARGS+=(-e OPENCODE_MODEL="$OPENCODE_MODEL")
@@ -162,6 +229,18 @@ fi
 
 if [ -n "${OPENCODE_LOCAL_MODEL_URL:-}" ]; then
     RUN_ARGS+=(-e OPENCODE_LOCAL_MODEL_URL="$OPENCODE_LOCAL_MODEL_URL")
+fi
+
+if [ -n "${UNITY_BRIDGE_URL:-}" ]; then
+    RUN_ARGS+=(-e UNITY_BRIDGE_URL="$UNITY_BRIDGE_URL")
+fi
+
+if [ -n "${UNITY_BRIDGE_TOKEN:-}" ]; then
+    RUN_ARGS+=(-e UNITY_BRIDGE_TOKEN="$UNITY_BRIDGE_TOKEN")
+fi
+
+if [ -n "${UNITY_TIMEOUT_MS:-}" ]; then
+    RUN_ARGS+=(-e UNITY_TIMEOUT_MS="$UNITY_TIMEOUT_MS")
 fi
 
 exec "${COMPOSE_CMD[@]}" run "${RUN_ARGS[@]}" opencode
