@@ -13,6 +13,7 @@ USE_LOCAL_MODEL=false
 BUILD_IMAGE=false
 SHOW_HELP=false
 RESET_CONFIG=false
+UNINSTALL=false
 WITH_UNITY=""
 WORKDIR="$(pwd)"
 
@@ -39,6 +40,7 @@ OPTIONS:
     --unity             Rebuild the image with the Unity bridge command + skill (opt-in)
     --no-unity          Build without the Unity command and remove the skill (default)
     --reset             Erase everything: delete volumes (config/auth/cache), rebuild, start fresh
+    --uninstall         Remove safe-code (use install.sh --uninstall --purge for full cleanup)
     --help              Show this help message
 
 EXAMPLES:
@@ -52,6 +54,7 @@ EXAMPLES:
     safe-code --no-unity                   # Build without Unity, remove its skill (default)
     safe-code --reset                      # Wipe volumes + rebuild + start clean
     safe-code --build                      # Rebuild and run
+    safe-code --uninstall                  # Remove safe-code
 
 ENVIRONMENT VARIABLES:
     SAFE_CODE_HOME      Directory containing docker-compose.yml and project files
@@ -127,6 +130,10 @@ while [[ $# -gt 0 ]]; do
             RESET_CONFIG=true
             shift
             ;;
+        --uninstall)
+            UNINSTALL=true
+            shift
+            ;;
         --help)
             SHOW_HELP=true
             shift
@@ -142,6 +149,10 @@ done
 if [ "$SHOW_HELP" = true ]; then
     show_help
     exit 0
+fi
+
+if [ "$UNINSTALL" = true ]; then
+    exec bash "$SAFE_CODE_HOME/install.sh" --uninstall
 fi
 
 if [ -n "$PRESET" ]; then

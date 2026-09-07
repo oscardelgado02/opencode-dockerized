@@ -38,35 +38,21 @@ GOOGLE_API_KEY=...
 
 ## 3. Install the safe-code script
 
-> [!WARNING]  
-> User installation is not working right now.
-
-System-wide:
+One command from the repo root:
 
 ```bash
-sudo mkdir -p /usr/local/share/safe-code
-sudo cp -r Dockerfile docker-compose.yml entrypoint.sh shims skills bridge .env.safe .env.auto .env.balanced /usr/local/share/safe-code/
-[ -f .env ] && sudo cp .env /usr/local/share/safe-code/
-sudo cp safe-code /usr/local/bin/
-sudo chmod +x /usr/local/bin/safe-code
-echo 'export SAFE_CODE_HOME=/usr/local/share/safe-code' >> ~/.bashrc
-source ~/.bashrc
+./install.sh
 ```
 
-Or for your user only:
+That copies everything to `/usr/local/share/safe-code`, installs the `safe-code` launcher to `/usr/local/bin`, and adds `SAFE_CODE_HOME` to your shell config (needs sudo).
+
+For a user-only install (no sudo):
 
 ```bash
-mkdir -p ~/.local/share/safe-code
-cp -r Dockerfile docker-compose.yml entrypoint.sh shims skills bridge .env.safe .env.auto .env.balanced ~/.local/share/safe-code/
-[ -f .env ] && cp .env ~/.local/share/safe-code/
-mkdir -p ~/.local/bin
-cp safe-code ~/.local/bin/
-chmod +x ~/.local/bin/safe-code
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
+./install.sh --user
 ```
 
-> **Note:** If you use `zsh` or another shell, replace `~/.bashrc` with `~/.zshrc` or the appropriate profile file.
+> **Note:** If you use `zsh` or another shell, the installer updates `~/.zshrc` too. Reopen your shell or `source ~/.bashrc` afterwards.
 
 ## 4. Build the Docker image
 

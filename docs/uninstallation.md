@@ -1,19 +1,20 @@
 # Uninstallation
 
-## 1. Remove the safe-code script and project files
+## 1. Remove safe-code
 
-System-wide:
+One command — from the repo clone, `$SAFE_CODE_HOME`, or via the launcher:
 
 ```bash
-sudo rm /usr/local/bin/safe-code
-sudo rm -rf /usr/local/share/safe-code
+safe-code --uninstall
+# or: ./install.sh --uninstall   (from the repo or $SAFE_CODE_HOME)
 ```
 
-Or for your user only:
+This removes the `safe-code` launcher, `$SAFE_CODE_HOME` (with all project files), and the `SAFE_CODE_HOME` line from your shell config. Docker containers, the image, and volumes are kept.
+
+To also delete Docker data (containers, config/auth volumes, image):
 
 ```bash
-rm ~/.local/bin/safe-code
-rm -rf ~/.local/share/safe-code
+./install.sh --uninstall --purge
 ```
 
 ## 2. Stop and remove containers

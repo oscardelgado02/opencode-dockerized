@@ -10,16 +10,12 @@ cd safe-opencode
 cp .env.safe .env
 # Edit .env with your API keys
 
-sudo mkdir -p /usr/local/share/safe-code
-sudo cp -r Dockerfile docker-compose.yml entrypoint.sh shims skills bridge .env.safe .env.auto .env.balanced /usr/local/share/safe-code/
-[ -f .env ] && sudo cp .env /usr/local/share/safe-code/
-sudo cp safe-code /usr/local/bin/
-sudo chmod +x /usr/local/bin/safe-code
-echo 'export SAFE_CODE_HOME=/usr/local/share/safe-code' >> ~/.bashrc
-source ~/.bashrc
+./install.sh          # system-wide (needs sudo) — or: ./install.sh --user
 
 safe-code
 ```
+
+Uninstall: `safe-code --uninstall` (add `--purge` via `install.sh --uninstall --purge` to also remove the Docker image and volumes).
 
 > The `bridge/` folder ships with the installation, so an up-to-date Unity bridge always lives at `$SAFE_CODE_HOME/bridge/unity-bridge.mjs`.
 
