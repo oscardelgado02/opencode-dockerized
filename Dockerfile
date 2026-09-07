@@ -48,7 +48,7 @@ RUN addgroup -g $GID coder 2>/dev/null; \
     adduser -D -s /bin/sh -u $UID -G "$GROUP_NAME" coder \
     && mkdir -p /home/coder/.config/opencode /home/coder/.local/share/opencode /home/coder/.cache/opencode /workspace \
     && chown -R coder:"$GROUP_NAME" /home/coder /workspace \
-    && mkdir -p /usr/local/share/opencode-graphify \
+    && mkdir -p /usr/local/share/opencode-graphify/skills \
     && chown coder:"$GROUP_NAME" /usr/local/share/opencode-graphify
 
 # graphify runs on uv-managed Python, kept under the (persistent) config dir.
@@ -59,7 +59,7 @@ ENV UV_TOOL_DIR=/home/coder/.config/opencode/uv-tools \
     UV_PYTHON_INSTALL_DIR=/home/coder/.config/opencode/uv-python
 
 RUN uv tool install graphifyy@${GRAPHIFY_VERSION} && \
-    cd /tmp && PATH=/home/coder/.config/opencode/bin:$PATH graphify install --platform opencode && \
+    cd /tmp && HOME=/home/coder PATH=/home/coder/.config/opencode/bin:$PATH graphify install --platform opencode && \
     cp -R /home/coder/.config/opencode/skills/graphify /usr/local/share/opencode-graphify/skills/graphify
 
 # Symlinks so `graphify` works from any shell, even before the config volume exists.
