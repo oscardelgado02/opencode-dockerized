@@ -85,6 +85,8 @@ The image pre-registers three plugins in opencode's global config:
 
 The entrypoint merges the bundled plugins into any existing `plugin` array (without removing your own entries), so pre-existing configs get them too.
 
+Skills shipped in the image (`skills/` directory in the repo, e.g. the `pnpm` skill) are re-copied into the config volume on every start, so image updates always win over stale volume copies.
+
 ## opencode.json
 
 The entrypoint generates an `opencode.json` config file from environment variables on first run. If a config file already exists (from a previous session), it is preserved and only the bundled `plugin` entries are merged in. To force regeneration, remove the config volume:

@@ -28,12 +28,20 @@ ARG GID=1000
 ARG WITH_UNITY=0
 ARG GRAPHIFY_VERSION=latest
 
-RUN apk add --no-cache bash libstdc++ libgcc jq uv
+RUN apk add --no-cache bash libstdc++ libgcc jq uv python3 py3-pip
 
 COPY --from=installer /usr/local/bin/node /usr/local/bin/node
 COPY --from=installer /usr/local/lib/node_modules /usr/local/lib/node_modules
 COPY --from=installer /root/.local/share/pnpm/ /usr/local/
 COPY --from=installer /usr/local/bin/pn* /usr/local/bin/
+
+# The pn* glob above only lands pnpm's sidecar shims (pn/pnpx/pnx), not the CLI
+# itself; pnpm.cjs also lacks the exec bit, so link the executable .mjs entry.
+RUN ln -sf /usr/local/lib/node_modules/pnpm/bin/pnpm.mjs /usr/local/bin/pnpm
+
+# PNPM_HOME points at the merged-in installer layout so `pnpm add -g` shims
+# land in /usr/local/bin (already on PATH).
+ENV PNPM_HOME=/usr/local
 
 RUN addgroup -g $GID coder 2>/dev/null; \
     GROUP_NAME=$(getent group $GID | cut -d: -f1); \

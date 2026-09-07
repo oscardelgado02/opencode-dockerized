@@ -95,6 +95,10 @@ GRAPHIFY_VERSION=0.9.55
 
 > **Note:** `GRAPHIFY_VERSION` pins the graphify CLI version baked into the image. Ponytail and DCP are installed by opencode itself from the `plugin` array in `opencode.json` — pin them there if needed (e.g. `["@dietrichgebert/ponytail@4.9.0"]`).
 
+## What's in the image
+
+Runtime tools available to the agent: `node`, `pnpm`, `python3`, `pip3`, `uv`, `jq`, `graphify`, plus opencode itself. JavaScript packages are installed via pnpm with registry integrity checksums. Bundled skills (`pnpm`, plus `unity-cli` when built with `WITH_UNITY=1`) are synced into the config volume on every start.
+
 Then rebuild:
 
 ```bash

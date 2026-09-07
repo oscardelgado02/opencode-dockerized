@@ -30,6 +30,15 @@ safe-code
 - pnpm-based installs with registry integrity checksums
 - Persistent config and auth volumes (provider credentials survive restarts)
 
+## Available tooling
+
+Inside the container the agent has on its PATH:
+
+- `node`, `pnpm` — JavaScript toolchain (pnpm installs come from the registry with integrity checksums); a `pnpm` skill is synced into the config on start so the agent always reaches for pnpm over npm
+- `python3`, `pip3` — Python toolchain
+- `uv`, `graphify` — used by the bundled graphify plugin
+- `opencode`, `jq`
+
 ## Bundled plugins
 
 The image ships three plugins pre-registered in opencode's global config:
