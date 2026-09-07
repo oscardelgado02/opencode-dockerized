@@ -8,6 +8,10 @@ This setup applies multiple layers of security:
 - **Isolated workspace**: Only `/workspace` is mounted from the host with read-write access.
 - **Package integrity**: Uses pnpm for installation with integrity checksums instead of piping scripts from the internet.
 
+## Bundled plugins
+
+Three third-party plugins are installed in the global config ([Ponytail](https://github.com/DietrichGebert/ponytail), [DCP](https://github.com/Opencode-DCP/opencode-dynamic-context-pruning), [Graphify](https://github.com/Graphify-Labs/graphify)). Ponytail and DCP come from the public npm registry, graphify from PyPI via the official `uv` tool installer — they run with the same privileges as the agent itself. If your threat model requires zero third-party code, remove them (see [Uninstallation](uninstallation.md)).
+
 ## Permission model
 
 OpenCode's permission system controls what the AI agent can do:

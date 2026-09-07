@@ -43,14 +43,30 @@ Or remove all at once via compose:
 docker compose down -v
 ```
 
-## 5. Remove local DMR models (optional)
+## 5. Remove bundled plugins (optional)
+
+Ponytail and DCP live in the `plugin` array of `~/.config/opencode/opencode.json` in the config volume; graphify also installs a skill and the `graphify` CLI into the same volume. Removing them individually:
+
+```bash
+# Inside the container (or any editor on the volume): delete the plugin entries
+# you don't want, e.g. everything except "@custom/...":
+jq '.plugin = [.plugin[] | select(. != "@dietrichgebert/ponytail" and . != "@tarquinen/opencode-dcp")]' \
+  /path/to/opencode.json > opencode.json.tmp && mv opencode.json.tmp opencode.json
+
+# Graphify (inside the container):
+graphify uninstall --platform opencode
+```
+
+> The entrypoint re-adds bundled plugins on every start. To remove them permanently, rebuild without them (see [Configuration](configuration.md#bundled-plugins)) or unset them in a post-start step.
+
+## 6. Remove local DMR models (optional)
 
 ```bash
 docker model rm ai/smollm2
 docker model rm ai/qwen2.5-coder
 ```
 
-## 6. Remove the Unity bridge (optional)
+## 7. Remove the Unity bridge (optional)
 
 Only applies when you used the [Unity CLI integration](unity.md).
 
@@ -71,7 +87,7 @@ rmdir %USERPROFILE%\.unity-bridge
 
 If you enabled mirrored networking just for the bridge, optionally revert by deleting the `[wsl2]` block you added to `%USERPROFILE%\.wslconfig` and running `wsl --shutdown`.
 
-## 7. Remove the repository
+## 8. Remove the repository
 
 ```bash
 cd ..

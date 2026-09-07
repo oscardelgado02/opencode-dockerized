@@ -26,8 +26,9 @@ FROM alpine:latest
 ARG UID=1000
 ARG GID=1000
 ARG WITH_UNITY=0
+ARG GRAPHIFY_VERSION=latest
 
-RUN apk add --no-cache bash libstdc++ libgcc jq
+RUN apk add --no-cache bash libstdc++ libgcc jq uv
 
 COPY --from=installer /usr/local/bin/node /usr/local/bin/node
 COPY --from=installer /usr/local/lib/node_modules /usr/local/lib/node_modules
@@ -38,7 +39,24 @@ RUN addgroup -g $GID coder 2>/dev/null; \
     GROUP_NAME=$(getent group $GID | cut -d: -f1); \
     adduser -D -s /bin/sh -u $UID -G "$GROUP_NAME" coder \
     && mkdir -p /home/coder/.config/opencode /home/coder/.local/share/opencode /home/coder/.cache/opencode /workspace \
-    && chown -R coder:"$GROUP_NAME" /home/coder /workspace
+    && chown -R coder:"$GROUP_NAME" /home/coder /workspace \
+    && mkdir -p /usr/local/share/opencode-graphify \
+    && chown coder:"$GROUP_NAME" /usr/local/share/opencode-graphify
+
+# graphify runs on uv-managed Python, kept under the (persistent) config dir.
+# A staging copy lives outside the config volume so the entrypoint can sync it
+# into pre-existing volumes and refresh them on image updates.
+ENV UV_TOOL_DIR=/home/coder/.config/opencode/uv-tools \
+    UV_TOOL_BIN_DIR=/home/coder/.config/opencode/bin \
+    UV_PYTHON_INSTALL_DIR=/home/coder/.config/opencode/uv-python
+
+RUN uv tool install graphifyy@${GRAPHIFY_VERSION} && \
+    cd /tmp && PATH=/home/coder/.config/opencode/bin:$PATH graphify install --platform opencode && \
+    cp -R /home/coder/.config/opencode/skills/graphify /usr/local/share/opencode-graphify/skills/graphify
+
+# Symlinks so `graphify` works from any shell, even before the config volume exists.
+RUN ln -sf /home/coder/.config/opencode/bin/graphify /usr/local/bin/graphify && \
+    ln -sf /home/coder/.config/opencode/bin/graphify-mcp /usr/local/bin/graphify-mcp
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh

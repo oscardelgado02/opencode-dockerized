@@ -11,6 +11,7 @@ All configuration is done through environment variables, typically set in a `.en
 | `NODE_VERSION` | Node.js base image tag | `alpine` |
 | `PNPM_VERSION` | pnpm version to install | `latest` |
 | `OPENCODE_VERSION` | opencode-ai version to install | `latest` |
+| `GRAPHIFY_VERSION` | graphify version baked into the image | `latest` |
 | `ENV_FILE` | Path to env file (docker-compose only) | `.env` |
 
 ### Permissions
@@ -75,9 +76,18 @@ Three presets are included:
 
 Create your own by copying and modifying any preset.
 
+## Bundled plugins
+
+The image pre-registers three plugins in opencode's global config:
+
+- **Ponytail** (`@dietrichgebert/ponytail`) and **DCP** (`@tarquinen/opencode-dcp`) are added to the `plugin` array of `opencode.json` — opencode auto-installs them from npm on launch.
+- **Graphify** is installed as a skill (`~/.config/opencode/skills/graphify`) plus the `graphify` CLI (uv-managed, `~/.config/opencode/bin`), synced into the config volume on every container start.
+
+The entrypoint merges the bundled plugins into any existing `plugin` array (without removing your own entries), so pre-existing configs get them too.
+
 ## opencode.json
 
-The entrypoint generates an `opencode.json` config file from environment variables on first run. If a config file already exists (from a previous session), it is preserved. To force regeneration, remove the config volume:
+The entrypoint generates an `opencode.json` config file from environment variables on first run. If a config file already exists (from a previous session), it is preserved and only the bundled `plugin` entries are merged in. To force regeneration, remove the config volume:
 
 ```bash
 docker volume rm opencode-config

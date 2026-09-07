@@ -10,6 +10,7 @@ services:
         PNPM_VERSION: ${PNPM_VERSION:-latest}
         OPENCODE_VERSION: ${OPENCODE_VERSION:-latest}
         WITH_UNITY: ${WITH_UNITY:-0}
+        GRAPHIFY_VERSION: ${GRAPHIFY_VERSION:-latest}
     image: safe-opencode
     volumes:
       - opencode-config:/home/coder/.config/opencode

@@ -8,6 +8,16 @@ Run with the safe preset (all permissions require approval):
 safe-code
 ```
 
+## Bundled plugins
+
+The image ships with three plugins active in every session:
+
+- **Ponytail** — anti-over-engineering ruleset, active by default at `full` level. Adjust with `/ponytail lite|full|ultra|off`.
+- **DCP** — dynamic context pruning (compression, deduplication, error purging). Manage with `/dcp` and `/dcp-compress`.
+- **Graphify** — builds a persistent knowledge graph of your codebase. Run `/graphify .` once, then query it with `graphify query "..."` or `/graphify query`.
+
+See [Bundled plugins](../README.md#bundled-plugins) for details and opt-out instructions.
+
 ## Presets
 
 ```bash

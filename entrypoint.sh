@@ -22,6 +22,23 @@ elif [ -d "$CONFIG_DIR/skills/$SKILL_NAME" ]; then
   echo "[entrypoint] Removed stale $SKILL_NAME skill (image built with WITH_UNITY=0)"
 fi
 
+# Sync graphify (skill + uv-managed CLI) into the persistent config volume.
+# Version-gated: only copies when the image ships a different graphify, so the
+# large uv-tools/uv-python payload isn't re-copied on every start.
+GRAPHIFY_SRC="/usr/local/share/opencode-graphify"
+SRC_VER=$(cat "$GRAPHIFY_SRC/skills/graphify/.graphify_version" 2>/dev/null || true)
+DST_VER=$(cat "$CONFIG_DIR/skills/graphify/.graphify_version" 2>/dev/null || true)
+if [ -n "$SRC_VER" ] && [ "$SRC_VER" != "$DST_VER" ]; then
+  for ITEM in skills/graphify bin uv-tools uv-python; do
+    rm -rf "$CONFIG_DIR/$ITEM"
+    cp -R "$GRAPHIFY_SRC/$ITEM" "$CONFIG_DIR/$ITEM"
+  done
+  echo "[entrypoint] Installed graphify $SRC_VER (skill + CLI)"
+fi
+
+# Plugins bundled with the image. opencode auto-installs anything listed here.
+BUNDLED_PLUGINS='["@dietrichgebert/ponytail", "@tarquinen/opencode-dcp"]'
+
 PERMISSION_JSON=$(cat <<EOF
 {
   "read": "${OPENCODE_PERMISSION_READ:-ask}",
@@ -39,7 +56,13 @@ EOF
 )
 
 if [ ! -f "$CONFIG_FILE" ]; then
-  jq -n --argjson perm "$PERMISSION_JSON" '{"$schema": "https://opencode.ai/config.json", "permission": $perm}' > "$CONFIG_FILE"
+  jq -n --argjson perm "$PERMISSION_JSON" --argjson plugins "$BUNDLED_PLUGINS" \
+    '{"$schema": "https://opencode.ai/config.json", "permission": $perm, "plugin": $plugins}' > "$CONFIG_FILE"
+else
+  # Idempotent: make sure configs created before this image still get the plugins.
+  jq --argjson plugins "$BUNDLED_PLUGINS" \
+    '.plugin = ((.plugin // []) + $plugins | unique)' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" \
+    && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
 fi
 
 if [ -n "$OPENCODE_LOCAL_MODEL_URL" ] && [ -n "$OPENCODE_MODEL" ]; then

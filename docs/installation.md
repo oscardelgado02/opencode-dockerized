@@ -90,7 +90,10 @@ By default, the latest versions of Node.js, pnpm, and opencode-ai are used. To p
 NODE_VERSION=alpine
 PNPM_VERSION=10.17.0
 OPENCODE_VERSION=1.18.29
+GRAPHIFY_VERSION=0.9.55
 ```
+
+> **Note:** `GRAPHIFY_VERSION` pins the graphify CLI version baked into the image. Ponytail and DCP are installed by opencode itself from the `plugin` array in `opencode.json` — pin them there if needed (e.g. `["@dietrichgebert/ponytail@4.9.0"]`).
 
 Then rebuild:
 

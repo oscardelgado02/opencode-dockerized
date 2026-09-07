@@ -30,6 +30,20 @@ safe-code
 - pnpm-based installs with registry integrity checksums
 - Persistent config and auth volumes (provider credentials survive restarts)
 
+## Bundled plugins
+
+The image ships three plugins pre-registered in opencode's global config:
+
+| Plugin | What it does | Command |
+|--------|--------------|---------|
+| [Ponytail](https://github.com/DietrichGebert/ponytail) | Anti-over-engineering ruleset: ~54% less code, cheaper and faster sessions, fully safe | `/ponytail lite\|full\|ultra\|off` |
+| [DCP](https://github.com/Opencode-DCP/opencode-dynamic-context-pruning) | Dynamic context pruning: compresses stale conversation, dedupes tool calls, cuts token usage | `/dcp`, `/dcp-compress` |
+| [Graphify](https://github.com/Graphify-Labs/graphify) | Turns any codebase into a persistent, queryable knowledge graph (71x fewer tokens per query on large corpora) | `/graphify .`, `graphify query "..."` |
+
+Ponytail and DCP are opencode plugins (installed automatically by opencode from the `plugin` array in `opencode.json` on first launch). Graphify ships as a skill plus the `graphify` CLI, installed into the persistent config volume on container start.
+
+To opt out of a bundled plugin, remove its entry from `~/.config/opencode/opencode.json` (`plugin` array) or `~/.config/opencode/skills/graphify` inside the volume, then restart.
+
 ## Presets
 
 | Preset | Flag | Description |
