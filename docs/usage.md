@@ -10,11 +10,12 @@ safe-code
 
 ## Bundled plugins
 
-The image ships with three plugins active in every session:
+The image ships with four plugins active in every session:
 
 - **Ponytail** — anti-over-engineering ruleset, active by default at `full` level. Adjust with `/ponytail lite|full|ultra|off`.
 - **DCP** — dynamic context pruning (compression, deduplication, error purging). Manage with `/dcp` and `/dcp-compress`.
 - **Graphify** — builds a persistent knowledge graph of your codebase. Run `/graphify .` once, then query it with `graphify query "..."` or `/graphify query`.
+- **Caveman** — terse-mode persona that cuts output tokens ~65%. Adjust with `/caveman lite|full|ultra|off`; turn off with `/caveman off` (or `normal mode`).
 
 See [Bundled plugins](../README.md#bundled-plugins) for details and opt-out instructions.
 

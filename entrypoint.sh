@@ -39,6 +39,26 @@ if [ -n "$SRC_VER" ] && [ "$SRC_VER" != "$DST_VER" ]; then
   echo "[entrypoint] Installed graphify $SRC_VER (skill + CLI)"
 fi
 
+# Sync caveman (https://github.com/JuliusBrussee/caveman) opencode plugin
+# payload into the persistent config volume; image updates always win.
+CAVEMAN_SRC="/usr/local/share/opencode-caveman"
+if [ -d "$CAVEMAN_SRC/plugins" ]; then
+  mkdir -p "$CONFIG_DIR/plugins" "$CONFIG_DIR/commands" "$CONFIG_DIR/agents"
+  rm -rf "$CONFIG_DIR/plugins/caveman"
+  cp -R "$CAVEMAN_SRC/plugins/caveman" "$CONFIG_DIR/plugins/caveman"
+  cp -R "$CAVEMAN_SRC/commands/." "$CONFIG_DIR/commands/"
+  cp -R "$CAVEMAN_SRC/agents/." "$CONFIG_DIR/agents/"
+  cp -R "$CAVEMAN_SRC/skills/." "$CONFIG_DIR/skills/"
+  cp "$CAVEMAN_SRC/.caveman-opencode-ownership.json" "$CONFIG_DIR/" 2>/dev/null || true
+  # Always-on ruleset; append unless the fenced block is already present.
+  if [ ! -f "$CONFIG_DIR/AGENTS.md" ]; then
+    cp "$CAVEMAN_SRC/AGENTS.md" "$CONFIG_DIR/AGENTS.md"
+  elif ! grep -q '<!-- caveman-begin -->' "$CONFIG_DIR/AGENTS.md"; then
+    cat "$CAVEMAN_SRC/AGENTS.md" >> "$CONFIG_DIR/AGENTS.md"
+  fi
+  echo "[entrypoint] Installed caveman opencode plugin -> $CONFIG_DIR/plugins/"
+fi
+
 # Plugins bundled with the image. opencode auto-installs anything listed here.
 BUNDLED_PLUGINS='["@dietrichgebert/ponytail", "@tarquinen/opencode-dcp"]'
 
@@ -65,6 +85,12 @@ else
   # Idempotent: make sure configs created before this image still get the plugins.
   jq --argjson plugins "$BUNDLED_PLUGINS" \
     '.plugin = ((.plugin // []) + $plugins | unique)' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" \
+    && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+fi
+
+if [ -d "$CAVEMAN_SRC/plugins" ]; then
+  jq --arg p './plugins/caveman/plugin.js' \
+    '.plugin = ((.plugin // []) + [$p] | unique)' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" \
     && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
 fi
 

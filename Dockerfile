@@ -66,6 +66,21 @@ RUN uv tool install graphifyy@${GRAPHIFY_VERSION} && \
 RUN ln -sf /home/coder/.config/opencode/bin/graphify /usr/local/bin/graphify && \
     ln -sf /home/coder/.config/opencode/bin/graphify-mcp /usr/local/bin/graphify-mcp
 
+# caveman (https://github.com/JuliusBrussee/caveman): the opencode plugin is
+# repo-private (not on npm), so run its installer at build time against a
+# staging HOME and stage the payload; the entrypoint syncs it into the
+# persistent config volume (same pattern as skills/graphify).
+ARG CAVEMAN_REF=v2.6.0
+RUN apk add --no-cache git && \
+    git clone --depth 1 --branch "$CAVEMAN_REF" https://github.com/JuliusBrussee/caveman /tmp/caveman && \
+    mkdir -p /tmp/caveman-home/.config/opencode && \
+    echo '{"$schema": "https://opencode.ai/config.json"}' > /tmp/caveman-home/.config/opencode/opencode.json && \
+    HOME=/tmp/caveman-home node /tmp/caveman/bin/install.js --only opencode --non-interactive && \
+    mkdir -p /usr/local/share/opencode-caveman && \
+    cp -R /tmp/caveman-home/.config/opencode/plugins /tmp/caveman-home/.config/opencode/commands /tmp/caveman-home/.config/opencode/agents /tmp/caveman-home/.config/opencode/skills /usr/local/share/opencode-caveman/ && \
+    cp /tmp/caveman-home/.config/opencode/AGENTS.md /tmp/caveman-home/.config/opencode/.caveman-opencode-ownership.json /usr/local/share/opencode-caveman/ && \
+    apk del git
+
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

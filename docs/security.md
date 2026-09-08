@@ -10,7 +10,7 @@ This setup applies multiple layers of security:
 
 ## Bundled plugins
 
-Three third-party plugins are installed in the global config ([Ponytail](https://github.com/DietrichGebert/ponytail), [DCP](https://github.com/Opencode-DCP/opencode-dynamic-context-pruning), [Graphify](https://github.com/Graphify-Labs/graphify)). Ponytail and DCP come from the public npm registry, graphify from PyPI via the official `uv` tool installer — they run with the same privileges as the agent itself. If your threat model requires zero third-party code, remove them (see [Uninstallation](uninstallation.md)).
+Four third-party plugins are installed in the global config ([Ponytail](https://github.com/DietrichGebert/ponytail), [DCP](https://github.com/Opencode-DCP/opencode-dynamic-context-pruning), [Graphify](https://github.com/Graphify-Labs/graphify), [Caveman](https://github.com/JuliusBrussee/caveman)). Ponytail and DCP come from the public npm registry, graphify from PyPI via the official `uv` tool installer, caveman cloned from GitHub at the pinned `CAVEMAN_REF` tag — they run with the same privileges as the agent itself. If your threat model requires zero third-party code, remove them (see [Uninstallation](uninstallation.md)).
 
 ## Permission model
 

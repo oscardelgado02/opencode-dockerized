@@ -37,15 +37,16 @@ Inside the container the agent has on its PATH:
 
 ## Bundled plugins
 
-The image ships three plugins pre-registered in opencode's global config:
+The image ships four plugins pre-registered in opencode's global config:
 
 | Plugin | What it does | Command |
 |--------|--------------|---------|
 | [Ponytail](https://github.com/DietrichGebert/ponytail) | Anti-over-engineering ruleset: ~54% less code, cheaper and faster sessions, fully safe | `/ponytail lite\|full\|ultra\|off` |
 | [DCP](https://github.com/Opencode-DCP/opencode-dynamic-context-pruning) | Dynamic context pruning: compresses stale conversation, dedupes tool calls, cuts token usage | `/dcp`, `/dcp-compress` |
 | [Graphify](https://github.com/Graphify-Labs/graphify) | Turns any codebase into a persistent, queryable knowledge graph (71x fewer tokens per query on large corpora) | `/graphify .`, `graphify query "..."` |
+| [Caveman](https://github.com/JuliusBrussee/caveman) | Terse caveman persona: cuts output tokens ~65%; code, paths, and errors stay verbatim | `/caveman lite\|full\|ultra\|off` |
 
-Ponytail and DCP are opencode plugins (installed automatically by opencode from the `plugin` array in `opencode.json` on first launch). Graphify ships as a skill plus the `graphify` CLI, installed into the persistent config volume on container start.
+Ponytail and DCP are opencode plugins (installed automatically by opencode from the `plugin` array in `opencode.json` on first launch). Graphify ships as a skill plus the `graphify` CLI, installed into the persistent config volume on container start. Caveman's opencode plugin ships with its skills, commands, subagents, and always-on ruleset, staged in the image and synced into the persistent config volume on container start (pinned via the `CAVEMAN_REF` build arg, default `v2.6.0`).
 
 To opt out of a bundled plugin, remove its entry from `~/.config/opencode/opencode.json` (`plugin` array) or `~/.config/opencode/skills/graphify` inside the volume, then restart.
 

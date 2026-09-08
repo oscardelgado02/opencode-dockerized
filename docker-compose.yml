@@ -11,6 +11,7 @@ services:
         OPENCODE_VERSION: ${OPENCODE_VERSION:-latest}
         WITH_UNITY: ${WITH_UNITY:-0}
         GRAPHIFY_VERSION: ${GRAPHIFY_VERSION:-latest}
+        CAVEMAN_REF: ${CAVEMAN_REF:-v2.6.0}
     image: safe-opencode
     volumes:
       - opencode-config:/home/coder/.config/opencode

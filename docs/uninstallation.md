@@ -46,16 +46,22 @@ docker compose down -v
 
 ## 5. Remove bundled plugins (optional)
 
-Ponytail and DCP live in the `plugin` array of `~/.config/opencode/opencode.json` in the config volume; graphify also installs a skill and the `graphify` CLI into the same volume. Removing them individually:
+Ponytail and DCP live in the `plugin` array of `~/.config/opencode/opencode.json` in the config volume; graphify also installs a skill and the `graphify` CLI into the same volume. Caveman adds its own entry to the same `plugin` array plus `plugins/caveman/`, `skills/caveman*`, `skills/cavecrew`, `commands/caveman*`, `agents/cavecrew-*`, and a fenced block in `AGENTS.md`. Removing them individually:
 
 ```bash
 # Inside the container (or any editor on the volume): delete the plugin entries
 # you don't want, e.g. everything except "@custom/...":
-jq '.plugin = [.plugin[] | select(. != "@dietrichgebert/ponytail" and . != "@tarquinen/opencode-dcp")]' \
+jq '.plugin = [.plugin[] | select(. != "@dietrichgebert/ponytail" and . != "@tarquinen/opencode-dcp" and . != "./plugins/caveman/plugin.js")]' \
   /path/to/opencode.json > opencode.json.tmp && mv opencode.json.tmp opencode.json
 
 # Graphify (inside the container):
 graphify uninstall --platform opencode
+
+# Caveman (inside the container): run its uninstaller from a clone, or delete by hand
+rm -rf ~/.config/opencode/plugins/caveman ~/.config/opencode/skills/caveman* \
+       ~/.config/opencode/skills/cavecrew ~/.config/opencode/commands/caveman* \
+       ~/.config/opencode/agents/cavecrew-*
+# and delete the block between the <!-- caveman-begin --> / <!-- caveman-end --> markers in AGENTS.md
 ```
 
 > The entrypoint re-adds bundled plugins on every start. To remove them permanently, rebuild without them (see [Configuration](configuration.md#bundled-plugins)) or unset them in a post-start step.

@@ -78,10 +78,11 @@ Create your own by copying and modifying any preset.
 
 ## Bundled plugins
 
-The image pre-registers three plugins in opencode's global config:
+The image pre-registers four plugins in opencode's global config:
 
 - **Ponytail** (`@dietrichgebert/ponytail`) and **DCP** (`@tarquinen/opencode-dcp`) are added to the `plugin` array of `opencode.json` — opencode auto-installs them from npm on launch.
 - **Graphify** is installed as a skill (`~/.config/opencode/skills/graphify`) plus the `graphify` CLI (uv-managed, `~/.config/opencode/bin`), synced into the config volume on every container start.
+- **Caveman** is added to the `plugin` array (`./plugins/caveman/plugin.js`, staged in the image since the plugin is not on npm), plus its skills, commands, subagents, and an always-on ruleset appended to `~/.config/opencode/AGENTS.md` — synced into the config volume on every container start. Pin the version with the `CAVEMAN_REF` build arg (default `v2.6.0`).
 
 The entrypoint merges the bundled plugins into any existing `plugin` array (without removing your own entries), so pre-existing configs get them too.
 
