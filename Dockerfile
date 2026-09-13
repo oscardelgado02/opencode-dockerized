@@ -26,7 +26,6 @@ FROM alpine:latest
 ARG UID=1000
 ARG GID=1000
 ARG WITH_UNITY=0
-ARG GRAPHIFY_VERSION=latest
 
 RUN apk add --no-cache bash libstdc++ libgcc jq uv python3 py3-pip
 
@@ -47,29 +46,12 @@ RUN addgroup -g $GID coder 2>/dev/null; \
     GROUP_NAME=$(getent group $GID | cut -d: -f1); \
     adduser -D -s /bin/sh -u $UID -G "$GROUP_NAME" coder \
     && mkdir -p /home/coder/.config/opencode /home/coder/.local/share/opencode /home/coder/.cache/opencode /workspace \
-    && chown -R coder:"$GROUP_NAME" /home/coder /workspace \
-    && mkdir -p /usr/local/share/opencode-graphify/skills \
-    && chown coder:"$GROUP_NAME" /usr/local/share/opencode-graphify
-
-# graphify runs on uv-managed Python, kept under the (persistent) config dir.
-# A staging copy lives outside the config volume so the entrypoint can sync it
-# into pre-existing volumes and refresh them on image updates.
-ENV UV_TOOL_DIR=/home/coder/.config/opencode/uv-tools \
-    UV_TOOL_BIN_DIR=/home/coder/.config/opencode/bin \
-    UV_PYTHON_INSTALL_DIR=/home/coder/.config/opencode/uv-python
-
-RUN uv tool install graphifyy@${GRAPHIFY_VERSION} && \
-    cd /tmp && HOME=/home/coder PATH=/home/coder/.config/opencode/bin:$PATH graphify install --platform opencode && \
-    cp -R /home/coder/.config/opencode/skills/graphify /usr/local/share/opencode-graphify/skills/graphify
-
-# Symlinks so `graphify` works from any shell, even before the config volume exists.
-RUN ln -sf /home/coder/.config/opencode/bin/graphify /usr/local/bin/graphify && \
-    ln -sf /home/coder/.config/opencode/bin/graphify-mcp /usr/local/bin/graphify-mcp
+    && chown -R coder:"$GROUP_NAME" /home/coder /workspace
 
 # caveman (https://github.com/JuliusBrussee/caveman): the opencode plugin is
 # repo-private (not on npm), so run its installer at build time against a
 # staging HOME and stage the payload; the entrypoint syncs it into the
-# persistent config volume (same pattern as skills/graphify). The installer
+# persistent config volume. The installer
 # writes 700/600 modes and the entrypoint copies as the unprivileged coder
 # user, so the staged payload is made world-readable.
 ARG CAVEMAN_REF=v2.6.0

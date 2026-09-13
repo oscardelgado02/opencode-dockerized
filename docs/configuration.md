@@ -11,7 +11,6 @@ All configuration is done through environment variables, typically set in a `.en
 | `NODE_VERSION` | Node.js base image tag | `alpine` |
 | `PNPM_VERSION` | pnpm version to install | `latest` |
 | `OPENCODE_VERSION` | opencode-ai version to install | `latest` |
-| `GRAPHIFY_VERSION` | graphify version baked into the image | `latest` |
 | `ENV_FILE` | Path to env file (docker-compose only) | `.env` |
 
 ### Permissions
@@ -78,10 +77,9 @@ Create your own by copying and modifying any preset.
 
 ## Bundled plugins
 
-The image pre-registers four plugins in opencode's global config:
+The image pre-registers three plugins in opencode's global config:
 
-- **Ponytail** (`@dietrichgebert/ponytail`) and **DCP** (`@tarquinen/opencode-dcp`) are added to the `plugin` array of `opencode.json` — opencode auto-installs them from npm on launch.
-- **Graphify** is installed as a skill (`~/.config/opencode/skills/graphify`) plus the `graphify` CLI (uv-managed, `~/.config/opencode/bin`), synced into the config volume on every container start.
+- **Ponytail** (`@dietrichgebert/ponytail`) and **DCP** (`@tarquinen/opencode-dcp`) are added to the `plugin` array of `opencode.json` — opencode auto-installs them from npm on launch. Override with `OPENCODE_BUNDLED_PLUGINS` (a JSON array); set `OPENCODE_BUNDLED_PLUGINS=[]` for none.
 - **Caveman** is added to the `plugin` array (`./plugins/caveman/plugin.js`, staged in the image since the plugin is not on npm), plus its skills, commands, subagents, and an always-on ruleset appended to `~/.config/opencode/AGENTS.md` — synced into the config volume on every container start. Pin the version with the `CAVEMAN_REF` build arg (default `v2.6.0`).
 
 The entrypoint merges the bundled plugins into any existing `plugin` array (without removing your own entries), so pre-existing configs get them too.

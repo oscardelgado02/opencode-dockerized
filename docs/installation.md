@@ -76,15 +76,14 @@ By default, the latest versions of Node.js, pnpm, and opencode-ai are used. To p
 NODE_VERSION=alpine
 PNPM_VERSION=10.17.0
 OPENCODE_VERSION=1.18.29
-GRAPHIFY_VERSION=0.9.55
 CAVEMAN_REF=v2.6.0
 ```
 
-> **Note:** `GRAPHIFY_VERSION` pins the graphify CLI version baked into the image, `CAVEMAN_REF` pins the caveman plugin's GitHub tag. Ponytail and DCP are installed by opencode itself from the `plugin` array in `opencode.json` — pin them there if needed (e.g. `["@dietrichgebert/ponytail@4.9.0"]`).
+> **Note:** `CAVEMAN_REF` pins the caveman plugin's GitHub tag. Ponytail and DCP are installed by opencode itself from the `plugin` array in `opencode.json` — pin them there if needed (e.g. `["@dietrichgebert/ponytail@4.9.0"]`).
 
 ## What's in the image
 
-Runtime tools available to the agent: `node`, `pnpm`, `python3`, `pip3`, `uv`, `jq`, `graphify`, plus opencode itself. JavaScript packages are installed via pnpm with registry integrity checksums. Bundled skills (`pnpm`, plus `unity-cli` when built with `WITH_UNITY=1`) are synced into the config volume on every start.
+Runtime tools available to the agent: `node`, `pnpm`, `python3`, `pip3`, `uv`, `jq`, plus opencode itself. JavaScript packages are installed via pnpm with registry integrity checksums. Bundled skills (`pnpm`, plus `unity-cli` when built with `WITH_UNITY=1`) are synced into the config volume on every start.
 
 Then rebuild:
 

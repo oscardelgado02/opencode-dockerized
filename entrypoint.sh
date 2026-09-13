@@ -25,20 +25,6 @@ if [ ! -d "$SKILLS_SRC/unity-cli" ] && [ -d "$CONFIG_DIR/skills/unity-cli" ]; th
   echo "[entrypoint] Removed stale unity-cli skill (image built with WITH_UNITY=0)"
 fi
 
-# Sync graphify (skill + uv-managed CLI) into the persistent config volume.
-# Version-gated: only copies when the image ships a different graphify, so the
-# large uv-tools/uv-python payload isn't re-copied on every start.
-GRAPHIFY_SRC="/usr/local/share/opencode-graphify"
-SRC_VER=$(cat "$GRAPHIFY_SRC/skills/graphify/.graphify_version" 2>/dev/null || true)
-DST_VER=$(cat "$CONFIG_DIR/skills/graphify/.graphify_version" 2>/dev/null || true)
-if [ -n "$SRC_VER" ] && [ "$SRC_VER" != "$DST_VER" ]; then
-  for ITEM in skills/graphify bin uv-tools uv-python; do
-    rm -rf "$CONFIG_DIR/$ITEM"
-    cp -R "$GRAPHIFY_SRC/$ITEM" "$CONFIG_DIR/$ITEM"
-  done
-  echo "[entrypoint] Installed graphify $SRC_VER (skill + CLI)"
-fi
-
 # Sync caveman (https://github.com/JuliusBrussee/caveman) opencode plugin
 # payload into the persistent config volume; image updates always win.
 CAVEMAN_SRC="/usr/local/share/opencode-caveman"
@@ -60,7 +46,8 @@ if [ -d "$CAVEMAN_SRC/plugins" ]; then
 fi
 
 # Plugins bundled with the image. opencode auto-installs anything listed here.
-BUNDLED_PLUGINS='["@dietrichgebert/ponytail", "@tarquinen/opencode-dcp"]'
+# Override with OPENCODE_BUNDLED_PLUGINS (a JSON array); set to [] for none.
+BUNDLED_PLUGINS="${OPENCODE_BUNDLED_PLUGINS:-[\"@dietrichgebert/ponytail\", \"@tarquinen/opencode-dcp\"]}"
 
 PERMISSION_JSON=$(cat <<EOF
 {
