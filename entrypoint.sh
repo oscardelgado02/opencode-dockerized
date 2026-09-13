@@ -11,16 +11,43 @@ mkdir -p "$CONFIG_DIR" "$AUTH_DIR"
 # Sync skills shipped in the image into the (persistent) config volume.
 # Re-copied on every start so image updates always win over volume copies.
 SKILLS_SRC="${OPENCODE_SKILLS_SRC:-/usr/local/share/opencode-skills}"
-SKILL_NAME="unity-cli"
-if [ -d "$SKILLS_SRC/$SKILL_NAME" ]; then
-  rm -rf "$CONFIG_DIR/skills/$SKILL_NAME"
-  mkdir -p "$CONFIG_DIR/skills"
-  cp -R "$SKILLS_SRC/$SKILL_NAME" "$CONFIG_DIR/skills/$SKILL_NAME"
-  echo "[entrypoint] Installed $SKILL_NAME skill -> $CONFIG_DIR/skills/"
-elif [ -d "$CONFIG_DIR/skills/$SKILL_NAME" ]; then
-  rm -rf "$CONFIG_DIR/skills/$SKILL_NAME"
-  echo "[entrypoint] Removed stale $SKILL_NAME skill (image built with WITH_UNITY=0)"
+mkdir -p "$CONFIG_DIR/skills"
+if [ -d "$SKILLS_SRC" ]; then
+  for SKILL_PATH in "$SKILLS_SRC"/*/; do
+    SKILL_NAME=$(basename "$SKILL_PATH")
+    rm -rf "$CONFIG_DIR/skills/$SKILL_NAME"
+    cp -R "$SKILL_PATH" "$CONFIG_DIR/skills/$SKILL_NAME"
+    echo "[entrypoint] Installed $SKILL_NAME skill -> $CONFIG_DIR/skills/"
+  done
 fi
+if [ ! -d "$SKILLS_SRC/unity-cli" ] && [ -d "$CONFIG_DIR/skills/unity-cli" ]; then
+  rm -rf "$CONFIG_DIR/skills/unity-cli"
+  echo "[entrypoint] Removed stale unity-cli skill (image built with WITH_UNITY=0)"
+fi
+
+# Sync caveman (https://github.com/JuliusBrussee/caveman) opencode plugin
+# payload into the persistent config volume; image updates always win.
+CAVEMAN_SRC="/usr/local/share/opencode-caveman"
+if [ -d "$CAVEMAN_SRC/plugins" ]; then
+  mkdir -p "$CONFIG_DIR/plugins" "$CONFIG_DIR/commands" "$CONFIG_DIR/agents"
+  rm -rf "$CONFIG_DIR/plugins/caveman"
+  cp -R "$CAVEMAN_SRC/plugins/caveman" "$CONFIG_DIR/plugins/caveman"
+  cp -R "$CAVEMAN_SRC/commands/." "$CONFIG_DIR/commands/"
+  cp -R "$CAVEMAN_SRC/agents/." "$CONFIG_DIR/agents/"
+  cp -R "$CAVEMAN_SRC/skills/." "$CONFIG_DIR/skills/"
+  cp "$CAVEMAN_SRC/.caveman-opencode-ownership.json" "$CONFIG_DIR/" 2>/dev/null || true
+  # Always-on ruleset; append unless the fenced block is already present.
+  if [ ! -f "$CONFIG_DIR/AGENTS.md" ]; then
+    cp "$CAVEMAN_SRC/AGENTS.md" "$CONFIG_DIR/AGENTS.md"
+  elif ! grep -q '<!-- caveman-begin -->' "$CONFIG_DIR/AGENTS.md"; then
+    cat "$CAVEMAN_SRC/AGENTS.md" >> "$CONFIG_DIR/AGENTS.md"
+  fi
+  echo "[entrypoint] Installed caveman opencode plugin -> $CONFIG_DIR/plugins/"
+fi
+
+# Plugins bundled with the image. opencode auto-installs anything listed here.
+# Override with OPENCODE_BUNDLED_PLUGINS (a JSON array); set to [] for none.
+BUNDLED_PLUGINS="${OPENCODE_BUNDLED_PLUGINS:-[\"@dietrichgebert/ponytail\", \"@tarquinen/opencode-dcp\"]}"
 
 PERMISSION_JSON=$(cat <<EOF
 {
@@ -39,7 +66,19 @@ EOF
 )
 
 if [ ! -f "$CONFIG_FILE" ]; then
-  jq -n --argjson perm "$PERMISSION_JSON" '{"$schema": "https://opencode.ai/config.json", "permission": $perm}' > "$CONFIG_FILE"
+  jq -n --argjson perm "$PERMISSION_JSON" --argjson plugins "$BUNDLED_PLUGINS" \
+    '{"$schema": "https://opencode.ai/config.json", "permission": $perm, "plugin": $plugins}' > "$CONFIG_FILE"
+else
+  # Idempotent: make sure configs created before this image still get the plugins.
+  jq --argjson plugins "$BUNDLED_PLUGINS" \
+    '.plugin = ((.plugin // []) + $plugins | unique)' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" \
+    && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+fi
+
+if [ -d "$CAVEMAN_SRC/plugins" ]; then
+  jq --arg p './plugins/caveman/plugin.js' \
+    '.plugin = ((.plugin // []) + [$p] | unique)' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" \
+    && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
 fi
 
 if [ -n "$OPENCODE_LOCAL_MODEL_URL" ] && [ -n "$OPENCODE_MODEL" ]; then

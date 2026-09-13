@@ -10,16 +10,12 @@ cd safe-opencode
 cp .env.safe .env
 # Edit .env with your API keys
 
-sudo mkdir -p /usr/local/share/safe-code
-sudo cp -r Dockerfile docker-compose.yml entrypoint.sh shims skills bridge .env.safe .env.auto .env.balanced /usr/local/share/safe-code/
-[ -f .env ] && sudo cp .env /usr/local/share/safe-code/
-sudo cp safe-code /usr/local/bin/
-sudo chmod +x /usr/local/bin/safe-code
-echo 'export SAFE_CODE_HOME=/usr/local/share/safe-code' >> ~/.bashrc
-source ~/.bashrc
+./install.sh          # system-wide (needs sudo) — or: ./install.sh --user
 
 safe-code
 ```
+
+Uninstall: `safe-code --uninstall` (add `--purge` via `install.sh --uninstall --purge` to also remove the Docker image and volumes).
 
 > The `bridge/` folder ships with the installation, so an up-to-date Unity bridge always lives at `$SAFE_CODE_HOME/bridge/unity-bridge.mjs`.
 
@@ -29,6 +25,29 @@ safe-code
 - Configurable permission model (ask/allow/deny per operation)
 - pnpm-based installs with registry integrity checksums
 - Persistent config and auth volumes (provider credentials survive restarts)
+
+## Available tooling
+
+Inside the container the agent has on its PATH:
+
+- `node`, `pnpm` — JavaScript toolchain (pnpm installs come from the registry with integrity checksums); a `pnpm` skill is synced into the config on start so the agent always reaches for pnpm over npm
+- `python3`, `pip3` — Python toolchain
+- `uv` — used by Python tooling
+- `opencode`, `jq`
+
+## Bundled plugins
+
+The image ships three plugins pre-registered in opencode's global config:
+
+| Plugin | What it does | Command |
+|--------|--------------|---------|
+| [Ponytail](https://github.com/DietrichGebert/ponytail) | Anti-over-engineering ruleset: ~54% less code, cheaper and faster sessions, fully safe | `/ponytail lite\|full\|ultra\|off` |
+| [DCP](https://github.com/Opencode-DCP/opencode-dynamic-context-pruning) | Dynamic context pruning: compresses stale conversation, dedupes tool calls, cuts token usage | `/dcp`, `/dcp-compress` |
+| [Caveman](https://github.com/JuliusBrussee/caveman) | Terse caveman persona: cuts output tokens ~65%; code, paths, and errors stay verbatim | `/caveman lite\|full\|ultra\|off` |
+
+Ponytail and DCP are opencode plugins (installed automatically by opencode from the `plugin` array in `opencode.json` on first launch). Caveman's opencode plugin ships with its skills, commands, subagents, and always-on ruleset, staged in the image and synced into the persistent config volume on container start (pinned via the `CAVEMAN_REF` build arg, default `v2.6.0`).
+
+To opt out of the bundled plugins, set `OPENCODE_BUNDLED_PLUGINS=[]` in your `.env` (Ponytail/DCP) or remove caveman's entry from `~/.config/opencode/opencode.json` (`plugin` array) inside the volume, then restart.
 
 ## Presets
 

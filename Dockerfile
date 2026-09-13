@@ -27,18 +27,44 @@ ARG UID=1000
 ARG GID=1000
 ARG WITH_UNITY=0
 
-RUN apk add --no-cache bash libstdc++ libgcc jq
+RUN apk add --no-cache bash libstdc++ libgcc jq uv python3 py3-pip
 
 COPY --from=installer /usr/local/bin/node /usr/local/bin/node
 COPY --from=installer /usr/local/lib/node_modules /usr/local/lib/node_modules
 COPY --from=installer /root/.local/share/pnpm/ /usr/local/
 COPY --from=installer /usr/local/bin/pn* /usr/local/bin/
 
+# The pn* glob above only lands pnpm's sidecar shims (pn/pnpx/pnx), not the CLI
+# itself; pnpm.cjs also lacks the exec bit, so link the executable .mjs entry.
+RUN ln -sf /usr/local/lib/node_modules/pnpm/bin/pnpm.mjs /usr/local/bin/pnpm
+
+# PNPM_HOME points at the merged-in installer layout so `pnpm add -g` shims
+# land in /usr/local/bin (already on PATH).
+ENV PNPM_HOME=/usr/local
+
 RUN addgroup -g $GID coder 2>/dev/null; \
     GROUP_NAME=$(getent group $GID | cut -d: -f1); \
     adduser -D -s /bin/sh -u $UID -G "$GROUP_NAME" coder \
     && mkdir -p /home/coder/.config/opencode /home/coder/.local/share/opencode /home/coder/.cache/opencode /workspace \
     && chown -R coder:"$GROUP_NAME" /home/coder /workspace
+
+# caveman (https://github.com/JuliusBrussee/caveman): the opencode plugin is
+# repo-private (not on npm), so run its installer at build time against a
+# staging HOME and stage the payload; the entrypoint syncs it into the
+# persistent config volume. The installer
+# writes 700/600 modes and the entrypoint copies as the unprivileged coder
+# user, so the staged payload is made world-readable.
+ARG CAVEMAN_REF=v2.6.0
+RUN apk add --no-cache git && \
+    git clone --depth 1 --branch "$CAVEMAN_REF" https://github.com/JuliusBrussee/caveman /tmp/caveman && \
+    mkdir -p /tmp/caveman-home/.config/opencode && \
+    echo '{"$schema": "https://opencode.ai/config.json"}' > /tmp/caveman-home/.config/opencode/opencode.json && \
+    HOME=/tmp/caveman-home node /tmp/caveman/bin/install.js --only opencode --non-interactive && \
+    mkdir -p /usr/local/share/opencode-caveman && \
+    cp -R /tmp/caveman-home/.config/opencode/plugins /tmp/caveman-home/.config/opencode/commands /tmp/caveman-home/.config/opencode/agents /tmp/caveman-home/.config/opencode/skills /usr/local/share/opencode-caveman/ && \
+    cp /tmp/caveman-home/.config/opencode/AGENTS.md /tmp/caveman-home/.config/opencode/.caveman-opencode-ownership.json /usr/local/share/opencode-caveman/ && \
+    chmod -R a+rX /usr/local/share/opencode-caveman && \
+    apk del git
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh

@@ -75,9 +75,20 @@ Three presets are included:
 
 Create your own by copying and modifying any preset.
 
+## Bundled plugins
+
+The image pre-registers three plugins in opencode's global config:
+
+- **Ponytail** (`@dietrichgebert/ponytail`) and **DCP** (`@tarquinen/opencode-dcp`) are added to the `plugin` array of `opencode.json` — opencode auto-installs them from npm on launch. Override with `OPENCODE_BUNDLED_PLUGINS` (a JSON array); set `OPENCODE_BUNDLED_PLUGINS=[]` for none.
+- **Caveman** is added to the `plugin` array (`./plugins/caveman/plugin.js`, staged in the image since the plugin is not on npm), plus its skills, commands, subagents, and an always-on ruleset appended to `~/.config/opencode/AGENTS.md` — synced into the config volume on every container start. Pin the version with the `CAVEMAN_REF` build arg (default `v2.6.0`).
+
+The entrypoint merges the bundled plugins into any existing `plugin` array (without removing your own entries), so pre-existing configs get them too.
+
+Skills shipped in the image (`skills/` directory in the repo, e.g. the `pnpm` skill) are re-copied into the config volume on every start, so image updates always win over stale volume copies.
+
 ## opencode.json
 
-The entrypoint generates an `opencode.json` config file from environment variables on first run. If a config file already exists (from a previous session), it is preserved. To force regeneration, remove the config volume:
+The entrypoint generates an `opencode.json` config file from environment variables on first run. If a config file already exists (from a previous session), it is preserved and only the bundled `plugin` entries are merged in. To force regeneration, remove the config volume:
 
 ```bash
 docker volume rm opencode-config

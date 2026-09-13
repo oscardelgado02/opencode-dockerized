@@ -38,35 +38,21 @@ GOOGLE_API_KEY=...
 
 ## 3. Install the safe-code script
 
-> [!WARNING]  
-> User installation is not working right now.
-
-System-wide:
+One command from the repo root:
 
 ```bash
-sudo mkdir -p /usr/local/share/safe-code
-sudo cp -r Dockerfile docker-compose.yml entrypoint.sh shims skills bridge .env.safe .env.auto .env.balanced /usr/local/share/safe-code/
-[ -f .env ] && sudo cp .env /usr/local/share/safe-code/
-sudo cp safe-code /usr/local/bin/
-sudo chmod +x /usr/local/bin/safe-code
-echo 'export SAFE_CODE_HOME=/usr/local/share/safe-code' >> ~/.bashrc
-source ~/.bashrc
+./install.sh
 ```
 
-Or for your user only:
+That copies everything to `/usr/local/share/safe-code`, installs the `safe-code` launcher to `/usr/local/bin`, and adds `SAFE_CODE_HOME` to your shell config (needs sudo).
+
+For a user-only install (no sudo):
 
 ```bash
-mkdir -p ~/.local/share/safe-code
-cp -r Dockerfile docker-compose.yml entrypoint.sh shims skills bridge .env.safe .env.auto .env.balanced ~/.local/share/safe-code/
-[ -f .env ] && cp .env ~/.local/share/safe-code/
-mkdir -p ~/.local/bin
-cp safe-code ~/.local/bin/
-chmod +x ~/.local/bin/safe-code
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
+./install.sh --user
 ```
 
-> **Note:** If you use `zsh` or another shell, replace `~/.bashrc` with `~/.zshrc` or the appropriate profile file.
+> **Note:** If you use `zsh` or another shell, the installer updates `~/.zshrc` too. Reopen your shell or `source ~/.bashrc` afterwards.
 
 ## 4. Build the Docker image
 
@@ -90,7 +76,14 @@ By default, the latest versions of Node.js, pnpm, and opencode-ai are used. To p
 NODE_VERSION=alpine
 PNPM_VERSION=10.17.0
 OPENCODE_VERSION=1.18.29
+CAVEMAN_REF=v2.6.0
 ```
+
+> **Note:** `CAVEMAN_REF` pins the caveman plugin's GitHub tag. Ponytail and DCP are installed by opencode itself from the `plugin` array in `opencode.json` — pin them there if needed (e.g. `["@dietrichgebert/ponytail@4.9.0"]`).
+
+## What's in the image
+
+Runtime tools available to the agent: `node`, `pnpm`, `python3`, `pip3`, `uv`, `jq`, plus opencode itself. JavaScript packages are installed via pnpm with registry integrity checksums. Bundled skills (`pnpm`, plus `unity-cli` when built with `WITH_UNITY=1`) are synced into the config volume on every start.
 
 Then rebuild:
 
