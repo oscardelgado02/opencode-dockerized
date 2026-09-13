@@ -81,6 +81,9 @@ $SUDO cp -r "${FILES[@]}" "$SAFE_CODE_HOME/"
 $SUDO mkdir -p "$BIN_DIR"
 $SUDO cp safe-code "$BIN_DIR/safe-code"
 $SUDO chmod +x "$BIN_DIR/safe-code"
+# Bake the real install path into the launcher so it works even when
+# SAFE_CODE_HOME is unset (e.g. under sudo, where HOME changes to /root).
+$SUDO sed -i "s|^SAFE_CODE_HOME=.*|SAFE_CODE_HOME=\"$SAFE_CODE_HOME\"|" "$BIN_DIR/safe-code"
 
 for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
   if [ -f "$rc" ] && ! grep -q "export SAFE_CODE_HOME=$SAFE_CODE_HOME" "$rc"; then

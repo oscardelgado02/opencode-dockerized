@@ -189,6 +189,20 @@ if [ -n "$WITH_UNITY" ]; then
     export WITH_UNITY
 fi
 
+if [ ! -f "$COMPOSE_FILE" ]; then
+    echo "Error: $COMPOSE_FILE not found."
+    echo "Install safe-code first (run install.sh) or set SAFE_CODE_HOME to the install directory."
+    exit 1
+fi
+
+if ! docker info >/dev/null 2>&1; then
+    echo "Error: cannot connect to the Docker daemon."
+    echo "Start Docker, or add your user to the docker group and re-login:"
+    echo "  sudo usermod -aG docker \$USER"
+    echo "  newgrp docker   (or log out and back in)"
+    exit 1
+fi
+
 COMPOSE_CMD=(docker compose -f "$COMPOSE_FILE")
 
 if [ -n "$ENV_FILE" ]; then
