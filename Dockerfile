@@ -66,6 +66,17 @@ RUN apk add --no-cache git && \
     chmod -R a+rX /usr/local/share/opencode-caveman && \
     apk del git
 
+# Matt Pocock skills (https://github.com/mattpocock/skills): clone at build
+# time and stage the skill dirs (skills/engineering/*, skills/productivity/*)
+# flat into the same staging dir as the local skills; the entrypoint syncs
+# everything under it into the persistent config volume.
+ARG MATTPOCOCK_REF=main
+RUN apk add --no-cache git && \
+    git clone --depth 1 --branch "$MATTPOCOCK_REF" https://github.com/mattpocock/skills /tmp/matt-skills && \
+    mkdir -p /usr/local/share/opencode-skills && \
+    cp -R /tmp/matt-skills/skills/engineering/*/ /tmp/matt-skills/skills/productivity/*/ /usr/local/share/opencode-skills/ && \
+    apk del git
+
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
