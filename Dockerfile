@@ -27,7 +27,7 @@ ARG UID=1000
 ARG GID=1000
 ARG WITH_UNITY=0
 
-RUN apk add --no-cache bash libstdc++ libgcc jq uv python3 py3-pip
+RUN apk add --no-cache bash libstdc++ libgcc libatomic jq uv python3 py3-pip
 
 COPY --from=installer /usr/local/bin/node /usr/local/bin/node
 COPY --from=installer /usr/local/lib/node_modules /usr/local/lib/node_modules
@@ -35,8 +35,10 @@ COPY --from=installer /root/.local/share/pnpm/ /usr/local/
 COPY --from=installer /usr/local/bin/pn* /usr/local/bin/
 
 # The pn* glob above only lands pnpm's sidecar shims (pn/pnpx/pnx), not the CLI
-# itself; pnpm.cjs also lacks the exec bit, so link the executable .mjs entry.
-RUN ln -sf /usr/local/lib/node_modules/pnpm/bin/pnpm.mjs /usr/local/bin/pnpm
+# itself; the bin/*.mjs entries also lack the exec bit, so restore it and link
+# the executable .mjs entry.
+RUN chmod +x /usr/local/lib/node_modules/pnpm/bin/*.mjs && \
+    ln -sf /usr/local/lib/node_modules/pnpm/bin/pnpm.mjs /usr/local/bin/pnpm
 
 # PNPM_HOME points at the merged-in installer layout so `pnpm add -g` shims
 # land in /usr/local/bin (already on PATH).
@@ -64,6 +66,17 @@ RUN apk add --no-cache git && \
     cp -R /tmp/caveman-home/.config/opencode/plugins /tmp/caveman-home/.config/opencode/commands /tmp/caveman-home/.config/opencode/agents /tmp/caveman-home/.config/opencode/skills /usr/local/share/opencode-caveman/ && \
     cp /tmp/caveman-home/.config/opencode/AGENTS.md /tmp/caveman-home/.config/opencode/.caveman-opencode-ownership.json /usr/local/share/opencode-caveman/ && \
     chmod -R a+rX /usr/local/share/opencode-caveman && \
+    apk del git
+
+# Matt Pocock skills (https://github.com/mattpocock/skills): clone at build
+# time and stage the skill dirs (skills/engineering/*, skills/productivity/*)
+# flat into the same staging dir as the local skills; the entrypoint syncs
+# everything under it into the persistent config volume.
+ARG MATTPOCOCK_REF=main
+RUN apk add --no-cache git && \
+    git clone --depth 1 --branch "$MATTPOCOCK_REF" https://github.com/mattpocock/skills /tmp/matt-skills && \
+    mkdir -p /usr/local/share/opencode-skills && \
+    cp -R /tmp/matt-skills/skills/engineering/*/ /tmp/matt-skills/skills/productivity/*/ /usr/local/share/opencode-skills/ && \
     apk del git
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
