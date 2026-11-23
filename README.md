@@ -101,6 +101,7 @@ safe-code --reset
 - [Configuration](docs/configuration.md) - Environment variables, permissions, presets
 - [Security](docs/security.md) - Hardening details and recommendations
 - [Troubleshooting](docs/troubleshooting.md) - Common issues and fixes
+- [Updating](docs/updating.md) - Rebuilding the image for new OpenCode versions
 - [Uninstallation](docs/uninstallation.md) - Complete removal steps
 
 ## Resources
