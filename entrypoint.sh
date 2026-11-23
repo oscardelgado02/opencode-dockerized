@@ -49,43 +49,50 @@ fi
 # Override with OPENCODE_BUNDLED_PLUGINS (a JSON array); set to [] for none.
 BUNDLED_PLUGINS="${OPENCODE_BUNDLED_PLUGINS:-[\"@dietrichgebert/ponytail\", \"@tarquinen/opencode-dcp\"]}"
 
-PERMISSION_JSON=$(cat <<EOF
-{
-  "read": "${OPENCODE_PERMISSION_READ:-ask}",
-  "edit": "${OPENCODE_PERMISSION_EDIT:-ask}",
-  "bash": "${OPENCODE_PERMISSION_BASH:-ask}",
-  "glob": "${OPENCODE_PERMISSION_GLOB:-ask}",
-  "grep": "${OPENCODE_PERMISSION_GREP:-ask}",
-  "list": "${OPENCODE_PERMISSION_LIST:-ask}",
-  "webfetch": "${OPENCODE_PERMISSION_WEBFETCH:-ask}",
-  "websearch": "${OPENCODE_PERMISSION_WEBSEARCH:-ask}",
-  "task": "${OPENCODE_PERMISSION_TASK:-ask}",
-  "external_directory": "${OPENCODE_PERMISSION_EXTERNAL_DIRECTORY:-ask}"
-}
-EOF
-)
+PERMISSION_RULES=$(jq -n '
+  [ $ARGS.named | to_entries[]
+    | select(.value != "")
+    | {action: .key, resource: "*", effect: .value} ]' \
+  --arg read "${OPENCODE_PERMISSION_READ:-}" \
+  --arg edit "${OPENCODE_PERMISSION_EDIT:-}" \
+  --arg shell "${OPENCODE_PERMISSION_SHELL:-}" \
+  --arg glob "${OPENCODE_PERMISSION_GLOB:-}" \
+  --arg grep "${OPENCODE_PERMISSION_GREP:-}" \
+  --arg webfetch "${OPENCODE_PERMISSION_WEBFETCH:-}" \
+  --arg websearch "${OPENCODE_PERMISSION_WEBSEARCH:-}" \
+  --arg subagent "${OPENCODE_PERMISSION_SUBAGENT:-}" \
+  --arg external_directory "${OPENCODE_PERMISSION_EXTERNAL_DIRECTORY:-}")
+
+# Blanket rules first, OPENCODE_PERMISSION_RULES (a JSON array) appended last:
+# v2 uses last matching rule wins, so exceptions override the blanket rules.
+PERMISSIONS=$(jq -cn --argjson base "$PERMISSION_RULES" \
+  --argjson extra "${OPENCODE_PERMISSION_RULES:-[]}" '$base + $extra')
 
 if [ ! -f "$CONFIG_FILE" ]; then
-  jq -n --argjson perm "$PERMISSION_JSON" --argjson plugins "$BUNDLED_PLUGINS" \
-    '{"$schema": "https://opencode.ai/config.json", "permission": $perm, "plugin": $plugins}' > "$CONFIG_FILE"
+  jq -n --argjson permissions "$PERMISSIONS" --argjson plugins "$BUNDLED_PLUGINS" \
+    '{"$schema": "https://opencode.ai/config.json", "permissions": $permissions, "plugins": $plugins}' > "$CONFIG_FILE"
 else
   # Idempotent: make sure configs created before this image still get the plugins.
+  # Existing permission rules are left untouched so user exceptions survive;
+  # v2 still normalizes configs created by the v1 image.
   jq --argjson plugins "$BUNDLED_PLUGINS" \
-    '.plugin = ((.plugin // []) + $plugins | unique)' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" \
+    '.plugins = ((.plugins // []) + $plugins | unique)' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" \
     && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
 fi
 
 if [ -d "$CAVEMAN_SRC/plugins" ]; then
-  jq --arg p './plugins/caveman/plugin.js' \
-    '.plugin = ((.plugin // []) + [$p] | unique)' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" \
+  # v2 loads plugins from a directory (caveman's server.js); v1 imported the
+  # directory's package.json main, so this entry works on both majors.
+  jq --arg p './plugins/caveman' \
+    '.plugins = ((.plugins // []) + [$p] | unique)' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" \
     && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
 fi
 
 if [ -n "$OPENCODE_LOCAL_MODEL_URL" ] && [ -n "$OPENCODE_MODEL" ]; then
   PROVIDER_JSON=$(jq -n --arg url "${OPENCODE_LOCAL_MODEL_URL}/engines/v1" --arg model "$OPENCODE_MODEL" \
-    '{dmr: {npm: "@ai-sdk/openai-compatible", name: "Docker Model Runner", options: {baseURL: $url}, models: {($model): {name: $model}}}}')
+    '{dmr: {package: "aisdk:@ai-sdk/openai-compatible", settings: {baseURL: $url}, models: {($model): {name: $model}}}}')
   jq --argjson provider "$PROVIDER_JSON" --arg model "dmr/$OPENCODE_MODEL" \
-    '.provider = (.provider // {}) * $provider | .model = $model' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+    '.providers = (.providers // {}) * $provider | .model = $model' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
 elif [ -n "$OPENCODE_MODEL" ]; then
   jq --arg model "$OPENCODE_MODEL" '.model = $model' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
 fi

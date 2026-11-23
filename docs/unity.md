@@ -81,7 +81,7 @@ unity build -target StandaloneWindows64
 bridge-health      # as first arg of `unity`: check bridge connectivity
 ```
 
-opencode treats these as normal bash calls — they are gated by `OPENCODE_PERMISSION_BASH` like every other command.
+opencode treats these as normal shell calls — they are gated by `OPENCODE_PERMISSION_SHELL` like every other command.
 
 ## The unity-cli skill
 

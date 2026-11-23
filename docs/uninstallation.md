@@ -46,12 +46,12 @@ docker compose down -v
 
 ## 5. Remove bundled plugins (optional)
 
-Ponytail and DCP live in the `plugin` array of `~/.config/opencode/opencode.json` in the config volume. Caveman adds its own entry to the same `plugin` array plus `plugins/caveman/`, `skills/caveman*`, `skills/cavecrew`, `commands/caveman*`, `agents/cavecrew-*`, and a fenced block in `AGENTS.md`. Removing them individually:
+Ponytail and DCP live in the `plugins` array of `~/.config/opencode/opencode.json` in the config volume. Caveman adds its own entry to the same `plugins` array plus `plugins/caveman/`, `skills/caveman*`, `skills/cavecrew`, `commands/caveman*`, `agents/cavecrew-*`, and a fenced block in `AGENTS.md`. Removing them individually:
 
 ```bash
 # Inside the container (or any editor on the volume): delete the plugin entries
 # you don't want, e.g. everything except "@custom/...":
-jq '.plugin = [.plugin[] | select(. != "@dietrichgebert/ponytail" and . != "@tarquinen/opencode-dcp" and . != "./plugins/caveman/plugin.js")]' \
+jq '.plugins = [.plugins[] | select(. != "@dietrichgebert/ponytail" and . != "@tarquinen/opencode-dcp" and . != "./plugins/caveman")]' \
   /path/to/opencode.json > opencode.json.tmp && mv opencode.json.tmp opencode.json
 
 # Caveman (inside the container): run its uninstaller from a clone, or delete by hand

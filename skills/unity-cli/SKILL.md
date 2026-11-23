@@ -17,7 +17,7 @@ Key facts:
 - Exit codes are propagated faithfully from the host: `0` success, other = failure,
   `124` means the host command hit the timeout (`UNITY_TIMEOUT_MS`, default 30 min).
 - stdout/stderr are streamed back separated — same as running Unity natively.
-- Every call is gated by opencode's normal bash permissions.
+- Every call is gated by opencode's normal shell permissions.
 
 ## First check connectivity
 

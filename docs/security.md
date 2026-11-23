@@ -20,23 +20,19 @@ OpenCode's permission system controls what the AI agent can do:
 |-----------|----------|
 | `read` | Reading file contents |
 | `edit` | Editing, writing, and patching files |
-| `bash` | Running shell commands |
+| `shell` | Running shell commands |
 | `glob` | File pattern matching |
 | `grep` | Content search with regex |
-| `list` | Directory listing |
 | `webfetch` | Fetching URLs |
 | `websearch` | Web searches |
-| `task` | Spawning subagent tasks |
+| `subagent` | Spawning subagents |
 | `external_directory` | Accessing paths outside workspace |
 
-Each can be set to `ask` (prompt), `allow` (always permit), or `deny` (always block).
+Each can be set to `ask` (prompt), `allow` (always permit), or `deny` (always block). Rules are ordered and the last matching rule wins; `OPENCODE_PERMISSION_RULES` appends extra rules after the blanket ones.
 
-Additional permissions (configured directly in `opencode.json`):
+Additional v2 permission actions (configured via `OPENCODE_PERMISSION_RULES`):
 - `skill` - Using skills
-- `lsp` - Language server operations
 - `question` - Asking user questions
-- `todowrite` - Managing todo lists
-- `doom_loop` - Loop prevention prompts
 
 ## Recommendations
 

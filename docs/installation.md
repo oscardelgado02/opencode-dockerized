@@ -70,16 +70,16 @@ docker compose build
 
 ## Pinning specific versions
 
-By default, the latest versions of Node.js, pnpm, and opencode-ai are used. To pin specific versions, set them in your `.env` file:
+By default, the latest versions of Node.js, pnpm, and opencode v2 (`@opencode/cli`) are used. To pin specific versions, set them in your `.env` file:
 
 ```
 NODE_VERSION=alpine
 PNPM_VERSION=10.17.0
-OPENCODE_VERSION=1.18.29
-CAVEMAN_REF=v2.6.0
+OPENCODE_VERSION=2.3.2
+CAVEMAN_REF=v4.1.0
 ```
 
-> **Note:** `CAVEMAN_REF` pins the caveman plugin's GitHub tag. Ponytail and DCP are installed by opencode itself from the `plugin` array in `opencode.json` — pin them there if needed (e.g. `["@dietrichgebert/ponytail@4.9.0"]`).
+> **Note:** `CAVEMAN_REF` pins the caveman plugin's GitHub tag. Ponytail and DCP are installed by opencode itself from the `plugins` array in `opencode.json` — pin them there if needed (e.g. `["@dietrichgebert/ponytail@4.10.1"]`).
 
 ## What's in the image
 

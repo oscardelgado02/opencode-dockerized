@@ -14,12 +14,13 @@ RUN if [ "$PNPM_VERSION" = "latest" ]; then \
 ENV PNPM_HOME=/root/.local/share/pnpm
 ENV PATH="/root/.local/share/pnpm/bin:$PATH"
 
+# --allow-build=@opencode/cli: its postinstall downloads the native binary;
+# every other dependency stays build-free.
 RUN if [ "$OPENCODE_VERSION" = "latest" ]; then \
-      pnpm add -g opencode-ai@latest; \
+      pnpm add -g --allow-build=@opencode/cli @opencode/cli; \
     else \
-      pnpm add -g opencode-ai@${OPENCODE_VERSION}; \
-    fi && \
-    find /root/.local/share/pnpm/global -path '*/node_modules/opencode-ai' -exec sh -c 'cd "{}" && node postinstall.mjs' \;
+      pnpm add -g --allow-build=@opencode/cli @opencode/cli@${OPENCODE_VERSION}; \
+    fi
 
 FROM alpine:latest
 
@@ -41,7 +42,9 @@ RUN chmod +x /usr/local/lib/node_modules/pnpm/bin/*.mjs && \
     ln -sf /usr/local/lib/node_modules/pnpm/bin/pnpm.mjs /usr/local/bin/pnpm
 
 # PNPM_HOME points at the merged-in installer layout so `pnpm add -g` shims
-# land in /usr/local/bin (already on PATH).
+# land in /usr/local/bin (already on PATH). The @opencode/cli shim resolves
+# its target through a path relative to that layout, so the whole tree must
+# keep its shape (bin/ next to global/), which the COPY above preserves.
 ENV PNPM_HOME=/usr/local
 
 RUN addgroup -g $GID coder 2>/dev/null; \
@@ -56,12 +59,12 @@ RUN addgroup -g $GID coder 2>/dev/null; \
 # persistent config volume. The installer
 # writes 700/600 modes and the entrypoint copies as the unprivileged coder
 # user, so the staged payload is made world-readable.
-ARG CAVEMAN_REF=v2.6.0
+ARG CAVEMAN_REF=v4.1.0
 RUN apk add --no-cache git && \
     git clone --depth 1 --branch "$CAVEMAN_REF" https://github.com/JuliusBrussee/caveman /tmp/caveman && \
     mkdir -p /tmp/caveman-home/.config/opencode && \
     echo '{"$schema": "https://opencode.ai/config.json"}' > /tmp/caveman-home/.config/opencode/opencode.json && \
-    HOME=/tmp/caveman-home node /tmp/caveman/bin/install.js --only opencode --non-interactive && \
+    HOME=/tmp/caveman-home node /tmp/caveman/installer/install.js --only opencode --non-interactive && \
     mkdir -p /usr/local/share/opencode-caveman && \
     cp -R /tmp/caveman-home/.config/opencode/plugins /tmp/caveman-home/.config/opencode/commands /tmp/caveman-home/.config/opencode/agents /tmp/caveman-home/.config/opencode/skills /usr/local/share/opencode-caveman/ && \
     cp /tmp/caveman-home/.config/opencode/AGENTS.md /tmp/caveman-home/.config/opencode/.caveman-opencode-ownership.json /usr/local/share/opencode-caveman/ && \

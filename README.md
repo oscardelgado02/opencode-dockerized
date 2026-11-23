@@ -45,9 +45,9 @@ The image ships three plugins pre-registered in opencode's global config:
 | [DCP](https://github.com/Opencode-DCP/opencode-dynamic-context-pruning) | Dynamic context pruning: compresses stale conversation, dedupes tool calls, cuts token usage | `/dcp`, `/dcp-compress` |
 | [Caveman](https://github.com/JuliusBrussee/caveman) | Terse caveman persona: cuts output tokens ~65%; code, paths, and errors stay verbatim | `/caveman lite\|full\|ultra\|off` |
 
-Ponytail and DCP are opencode plugins (installed automatically by opencode from the `plugin` array in `opencode.json` on first launch). Caveman's opencode plugin ships with its skills, commands, subagents, and always-on ruleset, staged in the image and synced into the persistent config volume on container start (pinned via the `CAVEMAN_REF` build arg, default `v2.6.0`).
+Ponytail and DCP are opencode plugins (installed automatically by opencode from the `plugins` array in `opencode.json` on first launch). Caveman's opencode plugin ships with its skills, commands, subagents, and always-on ruleset, staged in the image and synced into the persistent config volume on container start (pinned via the `CAVEMAN_REF` build arg, default `v4.1.0`).
 
-To opt out of the bundled plugins, set `OPENCODE_BUNDLED_PLUGINS=[]` in your `.env` (Ponytail/DCP) or remove caveman's entry from `~/.config/opencode/opencode.json` (`plugin` array) inside the volume, then restart.
+To opt out of the bundled plugins, set `OPENCODE_BUNDLED_PLUGINS=[]` in your `.env` (Ponytail/DCP) or remove caveman's entry from `~/.config/opencode/opencode.json` (`plugins` array) inside the volume, then restart.
 
 ## Presets
 
