@@ -114,4 +114,19 @@ else
   echo "[entrypoint] Ignoring non-boolean OPENCODE_SNAPSHOT='$SNAPSHOT'" >&2
 fi
 
+# Concurrent instances share the host loopback (network_mode: host), so each
+# needs its own managed-service port. The CLI persists it in this instance's
+# config volume, so re-running it on every start is idempotent.
+if [ -n "${OPENCODE_SERVICE_PORT:-}" ]; then
+  case "$OPENCODE_SERVICE_PORT" in
+    ''|*[!0-9]*)
+      echo "[entrypoint] Ignoring non-numeric OPENCODE_SERVICE_PORT='$OPENCODE_SERVICE_PORT'" >&2
+      ;;
+    *)
+      opencode service set port "$OPENCODE_SERVICE_PORT" \
+        || echo "[entrypoint] Warning: could not set managed service port (opencode service set port failed); default 49374 stays active" >&2
+      ;;
+  esac
+fi
+
 exec "$@"

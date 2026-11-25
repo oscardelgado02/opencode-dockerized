@@ -42,6 +42,20 @@ By default, `safe-code` mounts your current working directory into the container
 safe-code --workdir /path/to/your/project
 ```
 
+## Running multiple instances
+
+Every safe-code instance runs a local API service (opencode's "managed service") on `127.0.0.1`. The default port is `49374`, and because the container uses host networking, two concurrent instances would collide on it.
+
+safe-code therefore assigns each install directory (`SAFE_CODE_HOME`) its own stable port in the range `49375`–`50273`, derived from the directory path. Two instances installed in different directories run side by side with no configuration.
+
+To pin a port explicitly (for example when two directories happen to derive the same port):
+
+```bash
+safe-code --service-port 49375
+```
+
+The port is persisted in the instance's config volume, so it only needs to be set once. Precedence: `--service-port` flag wins, then `OPENCODE_SERVICE_PORT` from your `.env` file, then the auto-assigned port.
+
 ## Using a specific cloud model
 
 ```bash

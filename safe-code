@@ -15,6 +15,7 @@ SHOW_HELP=false
 RESET_CONFIG=false
 UNINSTALL=false
 WITH_UNITY=""
+SERVICE_PORT=""
 WORKDIR="$(pwd)"
 
 show_help() {
@@ -36,6 +37,7 @@ OPTIONS:
     --unity-url <url>   Unity bridge URL (default: http://host.docker.internal:7777)
     --unity-token <t>   Unity bridge auth token (or set UNITY_BRIDGE_TOKEN)
     --workdir <dir>     Working directory to mount (default: current directory)
+    --service-port <p>  Fixed local API port for this instance (default: auto-assigned per install dir)
     --build             Rebuild the Docker image before running
     --unity             Rebuild the image with the Unity bridge command + skill (opt-in)
     --no-unity          Build without the Unity command and remove the skill (default)
@@ -104,6 +106,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --workdir)
             WORKDIR="$2"
+            shift 2
+            ;;
+        --service-port)
+            SERVICE_PORT="$2"
             shift 2
             ;;
         --unity-url)
@@ -185,6 +191,21 @@ if [ "$USE_LOCAL_MODEL" = true ]; then
     export OPENCODE_LOCAL_MODEL_URL="$DMR_URL"
 fi
 
+# Managed service port: instances share the host loopback (network_mode: host),
+# so each concurrent instance needs its own port. Explicit flag wins, then a
+# value from the .env file, else a stable per-SAFE_CODE_HOME port so two
+# installs never collide on the 49374 default.
+if [ -n "$SERVICE_PORT" ]; then
+    if ! [[ "$SERVICE_PORT" =~ ^[0-9]+$ ]]; then
+        echo "Error: --service-port expects a number, got '$SERVICE_PORT'"
+        exit 1
+    fi
+    export OPENCODE_SERVICE_PORT="$SERVICE_PORT"
+elif [ -z "${OPENCODE_SERVICE_PORT:-}" ]; then
+    PORT_HASH=$(cksum <<< "$SAFE_CODE_HOME" | awk '{print $1}')
+    export OPENCODE_SERVICE_PORT="$((49375 + PORT_HASH % 899))"
+fi
+
 if [ -n "$WITH_UNITY" ]; then
     export WITH_UNITY
 fi
@@ -254,6 +275,10 @@ fi
 
 if [ -n "${OPENCODE_LOCAL_MODEL_URL:-}" ]; then
     RUN_ARGS+=(-e OPENCODE_LOCAL_MODEL_URL="$OPENCODE_LOCAL_MODEL_URL")
+fi
+
+if [ -n "${OPENCODE_SERVICE_PORT:-}" ]; then
+    RUN_ARGS+=(-e OPENCODE_SERVICE_PORT="$OPENCODE_SERVICE_PORT")
 fi
 
 if [ -n "${UNITY_BRIDGE_URL:-}" ]; then
