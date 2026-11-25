@@ -57,6 +57,31 @@ Try building with no cache:
 docker compose build --no-cache
 ```
 
+## "Managed service port 49374 ... is already in use"
+
+Two opencode instances are binding the same local API port (the container uses host networking, so both bind the host's loopback). Fixes:
+
+1. An old container from a previous install may still be running and holding the port:
+
+```bash
+docker ps --filter name=opencode
+docker stop <container>
+```
+
+2. Run the new instance on its own port (assigned fresh per run):
+
+```bash
+safe-code --service-port 21000
+```
+
+Current safe-code versions pick a random service port per run; older setups all share the default `49374`.
+
+3. Warnings like `volume "safe-opencode-auth" carries the compose label "opencode-auth" but does not match the compose file` mean a renamed or moved install left volumes behind. Once no container uses them, remove them:
+
+```bash
+docker volume rm safe-opencode-auth safe-opencode-cache safe-opencode-config
+```
+
 ## Container exits immediately
 
 Run with debug output:

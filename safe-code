@@ -11,10 +11,12 @@ LOCAL_MODEL=""
 DMR_URL="http://model-runner.docker.internal:12434"
 USE_LOCAL_MODEL=false
 BUILD_IMAGE=false
+UPGRADE_OPENCODE=false
 SHOW_HELP=false
 RESET_CONFIG=false
 UNINSTALL=false
 WITH_UNITY=""
+SERVICE_PORT=""
 WORKDIR="$(pwd)"
 
 show_help() {
@@ -36,7 +38,9 @@ OPTIONS:
     --unity-url <url>   Unity bridge URL (default: http://host.docker.internal:7777)
     --unity-token <t>   Unity bridge auth token (or set UNITY_BRIDGE_TOKEN)
     --workdir <dir>     Working directory to mount (default: current directory)
+    --service-port <p>  Fixed local API port for this instance (default: auto-assigned per install dir)
     --build             Rebuild the Docker image before running
+    --upgrade           Update the bundled opencode to the latest version (rebuilds the image)
     --unity             Rebuild the image with the Unity bridge command + skill (opt-in)
     --no-unity          Build without the Unity command and remove the skill (default)
     --reset             Erase everything: delete volumes (config/auth/cache), rebuild, start fresh
@@ -106,6 +110,10 @@ while [[ $# -gt 0 ]]; do
             WORKDIR="$2"
             shift 2
             ;;
+        --service-port)
+            SERVICE_PORT="$2"
+            shift 2
+            ;;
         --unity-url)
             UNITY_BRIDGE_URL="$2"
             shift 2
@@ -116,6 +124,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --build)
             BUILD_IMAGE=true
+            shift
+            ;;
+        --upgrade)
+            UPGRADE_OPENCODE=true
             shift
             ;;
         --unity)
@@ -185,6 +197,20 @@ if [ "$USE_LOCAL_MODEL" = true ]; then
     export OPENCODE_LOCAL_MODEL_URL="$DMR_URL"
 fi
 
+# Managed service port: instances share the host loopback (network_mode: host),
+# so each concurrent instance needs its own port. A random port per run from a
+# range below the typical ephemeral port range keeps two runs of the same
+# install from colliding; --service-port pins one explicitly.
+if [ -n "$SERVICE_PORT" ]; then
+    if ! [[ "$SERVICE_PORT" =~ ^[0-9]+$ ]]; then
+        echo "Error: --service-port expects a number, got '$SERVICE_PORT'"
+        exit 1
+    fi
+    export OPENCODE_SERVICE_PORT="$SERVICE_PORT"
+elif [ -z "${OPENCODE_SERVICE_PORT:-}" ]; then
+    export OPENCODE_SERVICE_PORT="$((20000 + RANDOM % 10001))"
+fi
+
 if [ -n "$WITH_UNITY" ]; then
     export WITH_UNITY
 fi
@@ -215,7 +241,12 @@ if [ "$RESET_CONFIG" = true ]; then
     BUILD_IMAGE=true
 fi
 
-if [ "$BUILD_IMAGE" = true ] || ! docker image inspect safe-opencode >/dev/null 2>&1; then
+if [ "$UPGRADE_OPENCODE" = true ]; then
+    echo "Upgrading opencode: rebuilding image with the latest version..."
+    export OPENCODE_CACHE_BUST="$(date +%s)"
+fi
+
+if [ "$BUILD_IMAGE" = true ] || [ "$UPGRADE_OPENCODE" = true ] || ! docker image inspect safe-opencode >/dev/null 2>&1; then
     echo "Building Docker image..."
     "${COMPOSE_CMD[@]}" build
 fi
@@ -254,6 +285,10 @@ fi
 
 if [ -n "${OPENCODE_LOCAL_MODEL_URL:-}" ]; then
     RUN_ARGS+=(-e OPENCODE_LOCAL_MODEL_URL="$OPENCODE_LOCAL_MODEL_URL")
+fi
+
+if [ -n "${OPENCODE_SERVICE_PORT:-}" ]; then
+    RUN_ARGS+=(-e OPENCODE_SERVICE_PORT="$OPENCODE_SERVICE_PORT")
 fi
 
 if [ -n "${UNITY_BRIDGE_URL:-}" ]; then

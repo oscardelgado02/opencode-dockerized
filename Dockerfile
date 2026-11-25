@@ -14,6 +14,11 @@ RUN if [ "$PNPM_VERSION" = "latest" ]; then \
 ENV PNPM_HOME=/root/.local/share/pnpm
 ENV PATH="/root/.local/share/pnpm/bin:$PATH"
 
+# --upgrade passes a changing OPENCODE_CACHE_BUST so Docker invalidates the
+# cached install layer below and "latest" resolves a fresh version.
+ARG OPENCODE_CACHE_BUST=0
+RUN echo "opencode install cache-bust: $OPENCODE_CACHE_BUST"
+
 # --allow-build=@opencode/cli: its postinstall downloads the native binary;
 # every other dependency stays build-free.
 RUN if [ "$OPENCODE_VERSION" = "latest" ]; then \
@@ -22,13 +27,16 @@ RUN if [ "$OPENCODE_VERSION" = "latest" ]; then \
       pnpm add -g --allow-build=@opencode/cli @opencode/cli@${OPENCODE_VERSION}; \
     fi
 
+# Record the actually-installed version (resolves "latest") for host-side checks.
+RUN opencode --version > /tmp/oc-version
+
 FROM alpine:latest
 
 ARG UID=1000
 ARG GID=1000
 ARG WITH_UNITY=0
 
-RUN apk add --no-cache bash libstdc++ libgcc libatomic jq uv python3 py3-pip
+RUN apk add --no-cache bash git libstdc++ libgcc libatomic jq uv python3 py3-pip
 
 COPY --from=installer /usr/local/bin/node /usr/local/bin/node
 COPY --from=installer /usr/local/lib/node_modules /usr/local/lib/node_modules
@@ -68,8 +76,7 @@ RUN apk add --no-cache git && \
     mkdir -p /usr/local/share/opencode-caveman && \
     cp -R /tmp/caveman-home/.config/opencode/plugins /tmp/caveman-home/.config/opencode/commands /tmp/caveman-home/.config/opencode/agents /tmp/caveman-home/.config/opencode/skills /usr/local/share/opencode-caveman/ && \
     cp /tmp/caveman-home/.config/opencode/AGENTS.md /tmp/caveman-home/.config/opencode/.caveman-opencode-ownership.json /usr/local/share/opencode-caveman/ && \
-    chmod -R a+rX /usr/local/share/opencode-caveman && \
-    apk del git
+    chmod -R a+rX /usr/local/share/opencode-caveman
 
 # Matt Pocock skills (https://github.com/mattpocock/skills): clone at build
 # time and stage the skill dirs (skills/engineering/*, skills/productivity/*)
@@ -79,8 +86,7 @@ ARG MATTPOCOCK_REF=main
 RUN apk add --no-cache git && \
     git clone --depth 1 --branch "$MATTPOCOCK_REF" https://github.com/mattpocock/skills /tmp/matt-skills && \
     mkdir -p /usr/local/share/opencode-skills && \
-    cp -R /tmp/matt-skills/skills/engineering/*/ /tmp/matt-skills/skills/productivity/*/ /usr/local/share/opencode-skills/ && \
-    apk del git
+    cp -R /tmp/matt-skills/skills/engineering/*/ /tmp/matt-skills/skills/productivity/*/ /usr/local/share/opencode-skills/
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
@@ -92,6 +98,10 @@ RUN if [ "$WITH_UNITY" = "1" ]; then \
     else \
       rm -f /usr/local/bin/unity && rm -rf /usr/local/share/opencode-skills/unity-cli; \
     fi
+
+# Late on purpose: changing this layer invalidates nothing before it, so an
+# opencode upgrade re-runs only the installer stage and this copy.
+COPY --from=installer /tmp/oc-version /usr/local/share/opencode-version
 
 USER coder
 WORKDIR /workspace

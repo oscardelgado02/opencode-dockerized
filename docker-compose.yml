@@ -9,6 +9,9 @@ services:
         NODE_VERSION: ${NODE_VERSION:-alpine}
         PNPM_VERSION: ${PNPM_VERSION:-latest}
         OPENCODE_VERSION: ${OPENCODE_VERSION:-latest}
+        # Changing value busts the cached install layer so "latest" re-resolves
+        # (safe-code --upgrade sets it to a timestamp).
+        OPENCODE_CACHE_BUST: ${OPENCODE_CACHE_BUST:-0}
         WITH_UNITY: ${WITH_UNITY:-0}
         CAVEMAN_REF: ${CAVEMAN_REF:-v4.1.0}
     image: safe-opencode
@@ -33,6 +36,8 @@ services:
       - OPENCODE_PERMISSION_EXTERNAL_DIRECTORY=${OPENCODE_PERMISSION_EXTERNAL_DIRECTORY:-ask}
       - OPENCODE_PERMISSION_RULES=${OPENCODE_PERMISSION_RULES:-}
       - OPENCODE_MODEL=${OPENCODE_MODEL:-}
+      - OPENCODE_SERVICE_PORT=${OPENCODE_SERVICE_PORT:-}
+      - OPENCODE_SNAPSHOT=${OPENCODE_SNAPSHOT:-false}
       - OPENCODE_BUNDLED_PLUGINS=${OPENCODE_BUNDLED_PLUGINS:-}
       - OPENCODE_LOCAL_MODEL_URL=${OPENCODE_LOCAL_MODEL_URL:-}
       - UNITY_BRIDGE_URL=${UNITY_BRIDGE_URL:-http://host.docker.internal:7777}

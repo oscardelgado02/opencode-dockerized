@@ -8,6 +8,11 @@ AUTH_DIR="$HOME_DIR/.local/share/opencode"
 
 mkdir -p "$CONFIG_DIR" "$AUTH_DIR"
 
+# A killed opencode leaves stale snapshot git locks behind; git never removes
+# them and later captures then retry forever with no response (opencode #28952,
+# #42597). A fresh container has no running git, so clearing them is safe.
+find "$AUTH_DIR/snapshot" -name index.lock -delete 2>/dev/null || true
+
 # Sync skills shipped in the image into the (persistent) config volume.
 # Re-copied on every start so image updates always win over volume copies.
 SKILLS_SRC="${OPENCODE_SKILLS_SRC:-/usr/local/share/opencode-skills}"
@@ -95,6 +100,33 @@ if [ -n "$OPENCODE_LOCAL_MODEL_URL" ] && [ -n "$OPENCODE_MODEL" ]; then
     '.providers = (.providers // {}) * $provider | .model = $model' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
 elif [ -n "$OPENCODE_MODEL" ]; then
   jq --arg model "$OPENCODE_MODEL" '.model = $model' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+fi
+
+# Snapshot off by default: the per-message snapshot git step wedges sessions
+# forever on large untracked trees / embedded .git dirs, before the model is
+# ever called (opencode #48657, #61383, #28952). Set OPENCODE_SNAPSHOT=true to
+# re-enable (loses the workaround, keeps undo/revert).
+SNAPSHOT="${OPENCODE_SNAPSHOT:-false}"
+if jq -e 'type == "boolean"' >/dev/null 2>&1 <<<"$SNAPSHOT"; then
+  jq --argjson snapshot "$SNAPSHOT" '.snapshot = $snapshot' "$CONFIG_FILE" \
+    > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+else
+  echo "[entrypoint] Ignoring non-boolean OPENCODE_SNAPSHOT='$SNAPSHOT'" >&2
+fi
+
+# Concurrent instances share the host loopback (network_mode: host), so each
+# needs its own managed-service port. The CLI persists it in this instance's
+# config volume, so re-running it on every start is idempotent.
+if [ -n "${OPENCODE_SERVICE_PORT:-}" ]; then
+  case "$OPENCODE_SERVICE_PORT" in
+    ''|*[!0-9]*)
+      echo "[entrypoint] Ignoring non-numeric OPENCODE_SERVICE_PORT='$OPENCODE_SERVICE_PORT'" >&2
+      ;;
+    *)
+      opencode service set port "$OPENCODE_SERVICE_PORT" \
+        || echo "[entrypoint] Warning: could not set managed service port (opencode service set port failed); default 49374 stays active" >&2
+      ;;
+  esac
 fi
 
 exec "$@"
