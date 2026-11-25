@@ -68,13 +68,13 @@ docker ps --filter name=opencode
 docker stop <container>
 ```
 
-2. Run the new instance on its own port (persisted per instance, only needed once):
+2. Run the new instance on its own port (assigned fresh per run):
 
 ```bash
-safe-code --service-port 49375
+safe-code --service-port 21000
 ```
 
-Current safe-code versions auto-assign a distinct port per install directory (`SAFE_CODE_HOME`); older setups all share the default `49374`.
+Current safe-code versions pick a random service port per run; older setups all share the default `49374`.
 
 3. Warnings like `volume "safe-opencode-auth" carries the compose label "opencode-auth" but does not match the compose file` mean a renamed or moved install left volumes behind. Once no container uses them, remove them:
 

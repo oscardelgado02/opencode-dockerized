@@ -192,9 +192,9 @@ if [ "$USE_LOCAL_MODEL" = true ]; then
 fi
 
 # Managed service port: instances share the host loopback (network_mode: host),
-# so each concurrent instance needs its own port. Explicit flag wins, then a
-# value from the .env file, else a stable per-SAFE_CODE_HOME port so two
-# installs never collide on the 49374 default.
+# so each concurrent instance needs its own port. A random port per run from a
+# range below the typical ephemeral port range keeps two runs of the same
+# install from colliding; --service-port pins one explicitly.
 if [ -n "$SERVICE_PORT" ]; then
     if ! [[ "$SERVICE_PORT" =~ ^[0-9]+$ ]]; then
         echo "Error: --service-port expects a number, got '$SERVICE_PORT'"
@@ -202,8 +202,7 @@ if [ -n "$SERVICE_PORT" ]; then
     fi
     export OPENCODE_SERVICE_PORT="$SERVICE_PORT"
 elif [ -z "${OPENCODE_SERVICE_PORT:-}" ]; then
-    PORT_HASH=$(cksum <<< "$SAFE_CODE_HOME" | awk '{print $1}')
-    export OPENCODE_SERVICE_PORT="$((49375 + PORT_HASH % 899))"
+    export OPENCODE_SERVICE_PORT="$((20000 + RANDOM % 10001))"
 fi
 
 if [ -n "$WITH_UNITY" ]; then

@@ -5,7 +5,7 @@
 
 ## What the managed service is
 
-When an opencode instance starts, it launches a local HTTP API server — the "managed service". Its default port is `49374`, and it binds to `127.0.0.1` only. The TUI, the `opencode pair` web flow, and IDE integrations talk to this server. The port can be changed per instance with `opencode service set port <port>`; safe-code persists this per instance via the `OPENCODE_SERVICE_PORT` environment variable, so concurrent instances each get their own port (explicit `--service-port` flag, or an auto-assigned port in the range `49375`–`50273` derived from the install directory).
+When an opencode instance starts, it launches a local HTTP API server — the "managed service". Its default port is `49374`, and it binds to `127.0.0.1` only. The TUI, the `opencode pair` web flow, and IDE integrations talk to this server. The port can be changed per instance with `opencode service set port <port>`; safe-code persists a per-run port via the `OPENCODE_SERVICE_PORT` environment variable (random per run from `20000`–`30000`, or pinned with `--service-port`), so concurrent instances each get their own port.
 
 The server is not a trivial helper endpoint. Its API includes, among other things:
 
@@ -21,7 +21,7 @@ The server is not a trivial helper endpoint. Its API includes, among other thing
 
 ### Not exploitable from the network
 
-The server binds to `127.0.0.1` only. Nothing on the LAN or the internet can reach it directly, and the port range used for auto-assignment (`49375`–`50273`) stays inside the loopback bind. There is no remote attack path through this server as long as the loopback bind is not changed.
+The server binds to `127.0.0.1` only. Nothing on the LAN or the internet can reach it directly, and the random per-run port range (`20000`–`30000`) stays inside the loopback bind. There is no remote attack path through this server as long as the loopback bind is not changed.
 
 ### Reachable by any local process
 
@@ -55,7 +55,7 @@ Because `docker-compose.yml` sets `network_mode: host`, the container's "loopbac
 
 ## Changelog reference for the fix
 
-- `safe-code`: `--service-port <port>` flag; stable auto-assigned port per `SAFE_CODE_HOME` (hash into `49375`–`50273`); precedence flag > `OPENCODE_SERVICE_PORT` env > auto.
+- `safe-code`: `--service-port <port>` flag; random service port per run (`20000`–`30000`, below the typical ephemeral port range); precedence flag > `OPENCODE_SERVICE_PORT` env > random.
 - `docker-compose.yml`: `OPENCODE_SERVICE_PORT` passthrough.
 - `entrypoint.sh`: runs `opencode service set port` at container start (idempotent, persisted in the instance's config volume).
 - `docs/usage.md`: "Running multiple instances" section.
