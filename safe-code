@@ -11,6 +11,7 @@ LOCAL_MODEL=""
 DMR_URL="http://model-runner.docker.internal:12434"
 USE_LOCAL_MODEL=false
 BUILD_IMAGE=false
+UPGRADE_OPENCODE=false
 SHOW_HELP=false
 RESET_CONFIG=false
 UNINSTALL=false
@@ -39,6 +40,7 @@ OPTIONS:
     --workdir <dir>     Working directory to mount (default: current directory)
     --service-port <p>  Fixed local API port for this instance (default: auto-assigned per install dir)
     --build             Rebuild the Docker image before running
+    --upgrade           Update the bundled opencode to the latest version (rebuilds the image)
     --unity             Rebuild the image with the Unity bridge command + skill (opt-in)
     --no-unity          Build without the Unity command and remove the skill (default)
     --reset             Erase everything: delete volumes (config/auth/cache), rebuild, start fresh
@@ -122,6 +124,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --build)
             BUILD_IMAGE=true
+            shift
+            ;;
+        --upgrade)
+            UPGRADE_OPENCODE=true
             shift
             ;;
         --unity)
@@ -235,7 +241,12 @@ if [ "$RESET_CONFIG" = true ]; then
     BUILD_IMAGE=true
 fi
 
-if [ "$BUILD_IMAGE" = true ] || ! docker image inspect safe-opencode >/dev/null 2>&1; then
+if [ "$UPGRADE_OPENCODE" = true ]; then
+    echo "Upgrading opencode: rebuilding image with the latest version..."
+    export OPENCODE_CACHE_BUST="$(date +%s)"
+fi
+
+if [ "$BUILD_IMAGE" = true ] || [ "$UPGRADE_OPENCODE" = true ] || ! docker image inspect safe-opencode >/dev/null 2>&1; then
     echo "Building Docker image..."
     "${COMPOSE_CMD[@]}" build
 fi

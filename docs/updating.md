@@ -13,15 +13,25 @@ the project to (`~/.local/share/safe-code` for `--user` installs,
 ## Update OpenCode to the latest version
 
 ```bash
+safe-code --upgrade
+```
+
+`--upgrade` rebuilds the image with a cache-busting build arg, so npm resolves
+the newest version, then starts opencode as usual. The image records the
+installed version in `/usr/local/share/opencode-version`.
+
+Without `--upgrade`, the installed version stays frozen at the last build —
+`safe-code --build` alone is not enough, because Docker reuses the cached
+install layer unless the build args change. If `.env` pins
+`OPENCODE_VERSION=<version>`, `--upgrade` installs that pinned version, not
+the newest release.
+
+Manual equivalent (also refreshes the base images):
+
+```bash
 docker compose -f "$SAFE_CODE_HOME/docker-compose.yml" build --pull --no-cache
 safe-code
 ```
-
-`--no-cache` re-runs the `pnpm add` install step so npm resolves the newest
-version; `--pull` refreshes the base images.
-
-> `safe-code --build` alone is not enough — Docker reuses the cached install
-> layer unless the build args change or you pass `--no-cache`.
 
 ## Update to a pinned version
 

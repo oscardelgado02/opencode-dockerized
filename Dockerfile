@@ -14,6 +14,11 @@ RUN if [ "$PNPM_VERSION" = "latest" ]; then \
 ENV PNPM_HOME=/root/.local/share/pnpm
 ENV PATH="/root/.local/share/pnpm/bin:$PATH"
 
+# --upgrade passes a changing OPENCODE_CACHE_BUST so Docker invalidates the
+# cached install layer below and "latest" resolves a fresh version.
+ARG OPENCODE_CACHE_BUST=0
+RUN echo "opencode install cache-bust: $OPENCODE_CACHE_BUST"
+
 # --allow-build=@opencode/cli: its postinstall downloads the native binary;
 # every other dependency stays build-free.
 RUN if [ "$OPENCODE_VERSION" = "latest" ]; then \
@@ -21,6 +26,9 @@ RUN if [ "$OPENCODE_VERSION" = "latest" ]; then \
     else \
       pnpm add -g --allow-build=@opencode/cli @opencode/cli@${OPENCODE_VERSION}; \
     fi
+
+# Record the actually-installed version (resolves "latest") for host-side checks.
+RUN opencode --version > /tmp/oc-version
 
 FROM alpine:latest
 
@@ -90,6 +98,10 @@ RUN if [ "$WITH_UNITY" = "1" ]; then \
     else \
       rm -f /usr/local/bin/unity && rm -rf /usr/local/share/opencode-skills/unity-cli; \
     fi
+
+# Late on purpose: changing this layer invalidates nothing before it, so an
+# opencode upgrade re-runs only the installer stage and this copy.
+COPY --from=installer /tmp/oc-version /usr/local/share/opencode-version
 
 USER coder
 WORKDIR /workspace

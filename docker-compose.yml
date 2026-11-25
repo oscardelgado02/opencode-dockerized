@@ -9,6 +9,9 @@ services:
         NODE_VERSION: ${NODE_VERSION:-alpine}
         PNPM_VERSION: ${PNPM_VERSION:-latest}
         OPENCODE_VERSION: ${OPENCODE_VERSION:-latest}
+        # Changing value busts the cached install layer so "latest" re-resolves
+        # (safe-code --upgrade sets it to a timestamp).
+        OPENCODE_CACHE_BUST: ${OPENCODE_CACHE_BUST:-0}
         WITH_UNITY: ${WITH_UNITY:-0}
         CAVEMAN_REF: ${CAVEMAN_REF:-v4.1.0}
     image: safe-opencode
